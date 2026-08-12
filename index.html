@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>ともだち連絡ノート</title>
+<style>
+  :root{
+    --teal:#0f766e; --amber:#E8A33D; --amber-ink:#B87415;
+    --paper:#EDEFE6; --ink:#243330; --muted:#6b7a74; --line:#e3e5dd;
+    --round:'Hiragino Maru Gothic ProN','ヒラギノ丸ゴ ProN','Noto Sans JP',sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
+    color:var(--ink);
+    background-color:var(--paper);
+    background-image:radial-gradient(#cfd6c9 1px,transparent 1px);
+    background-size:18px 18px;
+    overscroll-behavior:none;
+  }
+  #app{display:flex;flex-direction:column;height:100dvh}
+  button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  .center{display:flex;align-items:center;justify-content:center;height:100dvh;padding:20px}
+  .card{background:#fff;border-radius:24px;box-shadow:0 8px 30px rgba(36,51,48,.12);padding:26px;width:100%;max-width:400px;max-height:88dvh;overflow-y:auto}
+  .eyebrow{font-size:12px;letter-spacing:.14em;color:var(--teal);margin:0 0 6px}
+  h1{font-family:var(--round);font-size:22px;margin:0 0 20px;line-height:1.4}
+  label{display:block;font-size:14px;margin-bottom:8px}
+  input[type=text],textarea{width:100%;padding:13px 16px;border-radius:16px;border:none;background:#f2f3ef;font:inherit;color:var(--ink)}
+  .avatars{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-bottom:20px}
+  .avatars button{font-size:20px;padding:6px 0;border-radius:12px}
+  .avatars button[aria-pressed=true]{background:#ccfbf1}
+  .note{font-size:12px;color:var(--muted);line-height:1.7;margin:0 0 20px}
+  .primary{width:100%;padding:14px;border-radius:16px;background:var(--teal);color:#fff;font-weight:600}
+  .primary:disabled{opacity:.35}
+  .steps{font-size:14px;line-height:1.9;padding-left:20px;margin:0 0 16px}
+  code{background:#f2f3ef;padding:2px 6px;border-radius:6px;font-size:12px;word-break:break-all}
+
+  /* ---- グループ一覧 ---- */
+  .homehead{padding:calc(16px + env(safe-area-inset-top)) 20px 12px;display:flex;align-items:flex-end;gap:10px}
+  .homehead h1{margin:0;font-size:24px;flex:1}
+  .rooms{flex:1;overflow-y:auto;padding:0 16px 8px}
+  .room-item{display:flex;align-items:center;gap:12px;width:100%;background:#fff;border-radius:18px;padding:16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(36,51,48,.07);text-align:left;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .room-item .dot{width:38px;height:38px;border-radius:12px;background:#ccfbf1;color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .room-item .nm{font-family:var(--round);font-size:17px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .room-item .arrow{color:#b7c0ba;font-size:15px}
+  .hint{font-size:12px;color:var(--muted);text-align:center;margin:2px 0 14px}
+  .joinbox{background:#fff;border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom));flex-shrink:0}
+  .joinrow{display:flex;gap:8px}
+  .joinrow input{flex:1}
+  .joinrow button{padding:0 20px;border-radius:16px;background:var(--teal);color:#fff;font-weight:600;flex-shrink:0}
+  .joinrow button:disabled{opacity:.35}
+  .emptyroom{text-align:center;color:var(--muted);padding:40px 20px}
+  .emptyroom .big{font-size:38px;margin-bottom:10px}
+
+  /* ---- 削除シート ---- */
+  .veil{position:fixed;inset:0;background:rgba(36,51,48,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px;z-index:50}
+  .sheet{background:#fff;border-radius:22px;padding:22px;width:100%;max-width:400px}
+  .sheet h2{font-family:var(--round);font-size:18px;margin:0 0 8px}
+  .sheet p{font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 18px}
+  .sheet .del{width:100%;padding:14px;border-radius:16px;background:#FDECEC;color:#9B2C2C;font-weight:600;margin-bottom:8px}
+  .sheet .cancel{width:100%;padding:14px;border-radius:16px;background:#f2f3ef;color:var(--ink)}
+
+  /* ---- ヘッダー ---- */
+  header{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:var(--teal);color:#fff;flex-shrink:0}
+  header .back{font-size:20px;padding:2px 6px;flex-shrink:0}
+  .room{font-family:var(--round);font-size:18px;line-height:1.2;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sub{font-size:11px;opacity:.8;margin:2px 0 0}
+
+  /* ---- お知らせ ---- */
+  #pinned{padding:12px 16px 0;flex-shrink:0}
+  .memo{position:relative;background:#fff;border-left:5px solid var(--amber);border-radius:8px;padding:12px 14px;box-shadow:0 2px 8px rgba(36,51,48,.08);transform:rotate(-.6deg);display:flex;gap:8px;align-items:flex-start}
+  .memo .tape{position:absolute;top:-8px;left:30px;width:56px;height:16px;background:rgba(232,163,61,.35);border-radius:2px}
+  .memo-label{font-size:11px;color:var(--amber-ink);margin:0 0 4px}
+  .memo-body{font-size:14px;margin:0;white-space:pre-wrap;word-break:break-word}
+
+  /* ---- トーク ---- */
+  #log{flex:1;overflow-y:auto;padding:14px 16px 6px;-webkit-overflow-scrolling:touch}
+  .day{display:flex;justify-content:center;margin:16px 0}
+  .day span{font-size:11px;padding:4px 12px;border-radius:999px;background:rgba(36,51,48,.08);color:#5b6a64}
+  .row{display:flex;gap:8px;margin-top:6px;align-items:flex-end}
+  .row.mine{flex-direction:row-reverse}
+  .face{width:32px;flex-shrink:0;font-size:20px;text-align:center;line-height:1}
+  .stack{max-width:76%;display:flex;flex-direction:column}
+  .row.mine .stack{align-items:flex-end}
+  .who{font-size:11px;color:#5b6a64;margin:0 0 4px 4px}
+  .bubble{padding:9px 14px;font-size:15px;line-height:1.6;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 3px rgba(36,51,48,.08);background:#fff;border-radius:18px 18px 18px 4px;text-align:left}
+  .mine .bubble{background:var(--teal);color:#fff;border-radius:18px 18px 4px 18px}
+  .sticker{font-size:52px;line-height:1;padding:4px;box-shadow:none;background:none!important}
+  .stamp{font-size:10px;color:#8b968f;flex-shrink:0;padding-bottom:3px}
+  .rx{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+  .rx button{font-size:12px;padding:2px 9px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(36,51,48,.1);border:1.5px solid transparent}
+  .rx button.on{border-color:var(--teal)}
+  .picker{display:flex;gap:2px;margin-top:5px;background:#fff;border-radius:999px;padding:4px 8px;box-shadow:0 3px 12px rgba(36,51,48,.16);width:max-content}
+  .picker button{font-size:19px;padding:2px 4px;border-radius:999px}
+  .empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--muted)}
+  .empty .big{font-size:40px;margin-bottom:10px}
+  .empty h2{font-family:var(--round);font-size:16px;color:var(--ink);margin:0 0 4px}
+
+  /* ---- 入力 ---- */
+  .stickers{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;padding:10px 12px;background:#fff;border-top:1px solid var(--line);flex-shrink:0}
+  .stickers button{font-size:24px;padding:8px 0;border-radius:12px}
+  footer{background:#fff;border-top:1px solid var(--line);padding:8px 12px calc(8px + env(safe-area-inset-bottom));flex-shrink:0}
+  .toggle{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:5px 12px;border-radius:999px;background:#f2f3ef;color:var(--muted);margin-bottom:8px}
+  .toggle.on{background:#FDF0DC;color:var(--amber-ink)}
+  .compose{display:flex;align-items:flex-end;gap:8px}
+  .icon{font-size:22px;padding:4px 6px;line-height:1}
+  #text{flex:1;resize:none;max-height:110px;border-radius:18px}
+  #send{width:42px;height:42px;border-radius:999px;background:var(--teal);color:#fff;font-size:17px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  #send:disabled{opacity:.3}
+  #send.notice{background:var(--amber)}
+  #err{font-size:12px;background:#FDECEC;color:#9B2C2C;padding:8px 12px;border-radius:12px;margin:0 16px 8px;display:none}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+/* ==========================================================
+   Firebase の設定
+   ========================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCzpAJAmqorxAzplZca57Q9wsO-z6jJ4TY",
+  authDomain: "rakuraku-1e398.firebaseapp.com",
+  databaseURL: "https://rakuraku-1e398-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rakuraku-1e398",
+  storageBucket: "rakuraku-1e398.firebasestorage.app",
+  messagingSenderId: "571906665311",
+  appId: "1:571906665311:web:8502ff541da6106cffe4ea"
+};
+/* ========================================================== */
+
+const AVATARS = ["🐻","🐱","🐶","🦊","🐼","🐰","🐯","🐨","🦁","🐷","🐸","🐵","🦉","🐧","🐝","🦄"];
+const STICKERS = ["👍","🎉","😂","🥹","👏","🙏","✨","💪","🍵","🌸","☕️","😴","🙌","❤️","😭","🔥"];
+const REACTIONS = ["👍","❤️","😂","🎉","🙏","😮"];
+const DAYS = ["日","月","火","水","木","金","土"];
+
+const app = document.getElementById("app");
+const el = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
+const esc = (s) => (s || "").replace(/[.#$/[\]]/g, "_").slice(0, 30);
+const hhmm = (t) => { const d = new Date(t); return d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0"); };
+const dayOf = (t) => { const d = new Date(t); return `${d.getMonth() + 1}月${d.getDate()}日(${DAYS[d.getDay()]})`; };
+const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+
+if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL) {
+  app.innerHTML = `<div class="center"><div class="card">
+    <p class="eyebrow">あと少し</p>
+    <h1>データの置き場所をつなごう</h1>
+    <p class="note">Firebaseの設定を貼りつけると動きはじめます。</p>
+  </div></div>`;
+  throw new Error("firebase config missing");
+}
+
+let db, fb;
+try {
+  const [{ initializeApp }, dbmod] = await Promise.all([
+    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
+    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js")
+  ]);
+  fb = dbmod;
+  db = fb.getDatabase(initializeApp(firebaseConfig));
+} catch (e) {
+  app.innerHTML = `<div class="center"><div class="card">
+    <p class="eyebrow">ここでは動きません</p>
+    <h1>ネットに置いてから開いてね</h1>
+    <p class="note">このアプリは、ウェブに公開した状態でないと動きません。Claudeのプレビュー画面や、iPadに保存したファイルを直接ひらいた場合は真っ白になります。<br><br>GitHub Pagesなどに置いて、そのURLからひらいてください。</p>
+  </div></div>`;
+  throw e;
+}
+
+/* ---------- 保存まわり ---------- */
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+let me = load("me", null);
+let rooms = load("rooms", []);
+let current = null;
+
+function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+
+/* ========== 1. 名前を決める ========== */
+function showSetup() {
+  let avatar = me?.avatar || AVATARS[0];
+  app.innerHTML = "";
+  const wrap = el("div", "center"), card = el("div", "card");
+  card.appendChild(el("p", "eyebrow", "ともだち連絡ノート"));
+  card.appendChild(el("h1", null, me ? "名前を変える" : "まずは名前を決めよう"));
+
+  card.appendChild(el("label", null, "名前（みんなに見える）"));
+  const nameIn = el("input"); nameIn.type = "text"; nameIn.maxLength = 12; nameIn.placeholder = "かいり"; nameIn.value = me?.name || "";
+  nameIn.style.marginBottom = "20px"; card.appendChild(nameIn);
+
+  card.appendChild(el("label", null, "アイコン"));
+  const grid = el("div", "avatars");
+  AVATARS.forEach(a => {
+    const b = el("button", null, a);
+    b.setAttribute("aria-label", "アイコン " + a);
+    b.setAttribute("aria-pressed", String(a === avatar));
+    b.onclick = () => { avatar = a; [...grid.children].forEach(c => c.setAttribute("aria-pressed", String(c.textContent === a))); };
+    grid.appendChild(b);
+  });
+  card.appendChild(grid);
+  card.appendChild(el("p", "note", "書いたことは、同じあいことばを使う人みんなに見えます。パスワードや住所は書かないでね。"));
+
+  const go = el("button", "primary", me ? "保存する" : "つぎへ");
+  const check = () => go.disabled = !nameIn.value.trim();
+  nameIn.oninput = check; check();
+  go.onclick = () => {
+    me = { uid: me?.uid || uid(), name: nameIn.value.trim().slice(0, 12), avatar };
+    store("me", me);
+    showHome();
+  };
+  card.appendChild(go);
+  wrap.appendChild(card); app.appendChild(wrap);
+}
+
+/* ========== 2. グループ一覧 ========== */
+function showHome() {
+  app.innerHTML = "";
+
+  const head = el("div", "homehead");
+  const h = el("h1", null, "グループ");
+  const prof = el("button", null, `${me.avatar} ${me.name}`);
+  prof.className = "room-item"; prof.style.width = "auto"; prof.style.margin = "0"; prof.style.padding = "8px 14px"; prof.style.fontSize = "13px";
+  prof.onclick = showSetup;
+  head.appendChild(h); head.appendChild(prof);
+  app.appendChild(head);
+
+  const list = el("div", "rooms");
+  if (!rooms.length) {
+    const e = el("div", "emptyroom");
+    e.appendChild(el("div", "big", "📒"));
+    e.appendChild(el("p", null, "まだグループがないよ。"));
+    e.appendChild(el("p", null, "下にあいことばを入れて入ろう。"));
+    list.appendChild(e);
+  } else {
+    list.appendChild(el("p", "hint", "タップで入る・長おしで消す"));
+    rooms.forEach(r => list.appendChild(roomButton(r)));
+  }
+  app.appendChild(list);
+
+  const box = el("div", "joinbox");
+  const row = el("div", "joinrow");
+  const inp = el("input"); inp.type = "text"; inp.maxLength = 20; inp.placeholder = "あいことばを入れる";
+  const btn = el("button", null, "入る"); btn.disabled = true;
+  const enter = () => {
+    const name = esc(inp.value.trim());
+    if (!name) return;
+    if (!rooms.includes(name)) { rooms.push(name); store("rooms", rooms); }
+    openRoom(name);
+  };
+  inp.oninput = () => btn.disabled = !inp.value.trim();
+  inp.onkeydown = (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); enter(); } };
+  btn.onclick = enter;
+  row.appendChild(inp); row.appendChild(btn); box.appendChild(row);
+  box.appendChild(el("p", "hint", "同じあいことばの人と同じ部屋になるよ"));
+  app.appendChild(box);
+}
+
+function roomButton(name) {
+  const b = el("button", "room-item");
+  const d = el("div", "dot", "💬");
+  b.appendChild(d);
+  b.appendChild(el("div", "nm", name));
+  b.appendChild(el("div", "arrow", "›"));
+
+  let timer = null, longed = false;
+  const start = () => { longed = false; timer = setTimeout(() => { longed = true; askDelete(name); }, 1000); };
+  const stop = () => { if (timer) clearTimeout(timer); timer = null; };
+  b.addEventListener("touchstart", start, { passive: true });
+  b.addEventListener("touchend", stop);
+  b.addEventListener("touchmove", stop, { passive: true });
+  b.addEventListener("touchcancel", stop);
+  b.addEventListener("mousedown", start);
+  b.addEventListener("mouseup", stop);
+  b.addEventListener("mouseleave", stop);
+  b.addEventListener("contextmenu", (e) => e.preventDefault());
+  b.onclick = () => { if (!longed) openRoom(name); };
+  return b;
+}
+
+function askDelete(name) {
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, `「${name}」を消す？`));
+  sheet.appendChild(el("p", null, "リストから消えるだけで、トークの中身は残ってるよ。もう一度おなじあいことばを入れれば、また入れる。"));
+  const del = el("button", "del", "リストから消す");
+  del.onclick = () => { rooms = rooms.filter(r => r !== name); store("rooms", rooms); veil.remove(); showHome(); };
+  const cancel = el("button", "cancel", "やめる");
+  cancel.onclick = () => veil.remove();
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  sheet.appendChild(del); sheet.appendChild(cancel);
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
+/* ========== 3. トーク ========== */
+let messages = [], reactions = {}, openPicker = null, noticeMode = false, stickersOpen = false, pinnedHidden = false;
+let offMsgs = null, offRx = null;
+
+function leaveRoom() {
+  if (offMsgs) { offMsgs(); offMsgs = null; }
+  if (offRx) { offRx(); offRx = null; }
+  messages = []; reactions = {}; openPicker = null;
+  noticeMode = false; stickersOpen = false; pinnedHidden = false;
+  current = null;
+  showHome();
+}
+
+function openRoom(name) {
+  current = name;
+  messages = []; reactions = {}; openPicker = null;
+  noticeMode = false; stickersOpen = false; pinnedHidden = false;
+  showChat();
+}
+
+function showChat() {
+  app.innerHTML = `
+    <header>
+      <button class="back" id="back" aria-label="グループ一覧にもどる">‹</button>
+      <div style="flex:1;min-width:0">
+        <p class="room"></p><p class="sub"></p>
+      </div>
+    </header>
+    <div id="pinned"></div>
+    <div id="log"></div>
+    <p id="err"></p>
+    <div class="stickers" id="stickers" style="display:none"></div>
+    <footer>
+      <button class="toggle" id="noticeBtn">📣 お知らせとして送る</button>
+      <div class="compose">
+        <button class="icon" id="stickerBtn" aria-label="スタンプを選ぶ">😊</button>
+        <textarea id="text" rows="1" placeholder="メッセージを書く"></textarea>
+        <button id="send" aria-label="送る" disabled>➤</button>
+      </div>
+    </footer>`;
+
+  document.querySelector(".room").textContent = current;
+  document.getElementById("back").onclick = leaveRoom;
+
+  const stickerBar = document.getElementById("stickers");
+  STICKERS.forEach(s => { const b = el("button", null, s); b.onclick = () => send("sticker", s); stickerBar.appendChild(b); });
+  document.getElementById("stickerBtn").onclick = () => {
+    stickersOpen = !stickersOpen; stickerBar.style.display = stickersOpen ? "grid" : "none";
+  };
+
+  const noticeBtn = document.getElementById("noticeBtn");
+  const textIn = document.getElementById("text");
+  const sendBtn = document.getElementById("send");
+  noticeBtn.onclick = () => {
+    noticeMode = !noticeMode;
+    noticeBtn.classList.toggle("on", noticeMode);
+    sendBtn.classList.toggle("notice", noticeMode);
+    textIn.placeholder = noticeMode ? "みんなへのお知らせを書く" : "メッセージを書く";
+  };
+  textIn.oninput = () => {
+    sendBtn.disabled = !textIn.value.trim();
+    textIn.style.height = "auto"; textIn.style.height = Math.min(textIn.scrollHeight, 110) + "px";
+  };
+  textIn.onkeydown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(noticeMode ? "notice" : "text", textIn.value); }
+  };
+  sendBtn.onclick = () => send(noticeMode ? "notice" : "text", textIn.value);
+
+  listen();
+}
+
+function fail(msg) {
+  const e = document.getElementById("err");
+  if (!e) return;
+  e.textContent = msg; e.style.display = msg ? "block" : "none";
+}
+
+function listen() {
+  const room = current;
+  offMsgs = fb.onValue(fb.ref(db, `rooms/${room}/messages`), (snap) => {
+    if (current !== room) return;
+    const v = snap.val() || {};
+    messages = Object.entries(v).map(([id, m]) => ({ id, ...m })).sort((a, b) => (a.t || 0) - (b.t || 0)).slice(-300);
+    render(); fail("");
+  }, () => fail("読み込めませんでした。ネットのつながりを確認してね。"));
+
+  offRx = fb.onValue(fb.ref(db, `rooms/${room}/reactions`), (snap) => {
+    if (current !== room) return;
+    reactions = snap.val() || {}; render();
+  });
+}
+
+async function send(type, body) {
+  const b = (body || "").trim();
+  if (!b || !current) return;
+  const textIn = document.getElementById("text");
+  try {
+    await fb.push(fb.ref(db, `rooms/${current}/messages`), {
+      uid: me.uid, name: me.name, avatar: me.avatar, type, body: b.slice(0, 1000), t: Date.now()
+    });
+    if (type !== "sticker") { textIn.value = ""; textIn.style.height = "auto"; document.getElementById("send").disabled = true; }
+    if (noticeMode) document.getElementById("noticeBtn").click();
+    if (stickersOpen) document.getElementById("stickerBtn").click();
+    pinnedHidden = false;
+    fail("");
+  } catch (e) {
+    fail("送れませんでした。もう一度おしてみてね。");
+  }
+}
+
+async function react(msgId, emoji) {
+  const path = fb.ref(db, `rooms/${current}/reactions/${msgId}/${me.uid}`);
+  const mine = reactions[msgId]?.[me.uid];
+  openPicker = null;
+  try { mine === emoji ? await fb.remove(path) : await fb.set(path, emoji); }
+  catch (e) { fail("リアクションをつけられませんでした。"); }
+}
+
+function render() {
+  const log = document.getElementById("log");
+  if (!log) return;
+  const stuck = log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+
+  const people = new Set(messages.map(m => m.uid));
+  document.querySelector(".sub").textContent = `${people.size || 1}人・${me.avatar} ${me.name}`;
+
+  const pin = document.getElementById("pinned");
+  pin.innerHTML = "";
+  const notices = messages.filter(m => m.type === "notice");
+  const last = notices[notices.length - 1];
+  if (last && !pinnedHidden) {
+    const memo = el("div", "memo");
+    memo.appendChild(el("div", "tape"));
+    const body = el("div"); body.style.flex = "1"; body.style.minWidth = "0";
+    body.appendChild(el("p", "memo-label", `📣 お知らせ・${last.name || "だれか"}`));
+    body.appendChild(el("p", "memo-body", last.body));
+    memo.appendChild(body);
+    const x = el("button", null, "✕"); x.style.color = "#9aa39e"; x.style.fontSize = "13px";
+    x.setAttribute("aria-label", "お知らせを閉じる");
+    x.onclick = () => { pinnedHidden = true; render(); };
+    memo.appendChild(x);
+    pin.appendChild(memo);
+  }
+
+  log.innerHTML = "";
+  if (!messages.length) {
+    const e = el("div", "empty");
+    e.appendChild(el("div", "big", "🍵"));
+    e.appendChild(el("h2", null, "まだ何もないよ"));
+    e.appendChild(el("p", null, "最初のひとことを書いてみよう。"));
+    log.appendChild(e);
+    return;
+  }
+
+  messages.forEach((m, i) => {
+    const prev = messages[i - 1];
+    if (!prev || !sameDay(prev.t, m.t)) {
+      const d = el("div", "day"); d.appendChild(el("span", null, dayOf(m.t))); log.appendChild(d);
+    }
+    const mine = m.uid === me.uid;
+
+    if (m.type === "notice") {
+      const memo = el("div", "memo");
+      memo.style.margin = "12px 0"; memo.style.transform = "none";
+      const body = el("div"); body.style.flex = "1"; body.style.minWidth = "0";
+      body.appendChild(el("p", "memo-label", `📣 お知らせ・${mine ? "自分" : m.name}・${hhmm(m.t)}`));
+      body.appendChild(el("p", "memo-body", m.body));
+      memo.appendChild(body);
+      log.appendChild(memo);
+      return;
+    }
+
+    const row = el("div", "row" + (mine ? " mine" : ""));
+    const showName = !mine && (!prev || prev.uid !== m.uid);
+    if (!mine) row.appendChild(el("div", "face", showName ? m.avatar : ""));
+
+    const stack = el("div", "stack");
+    if (showName) stack.appendChild(el("p", "who", m.name));
+
+    const line = el("div"); line.style.display = "flex"; line.style.alignItems = "flex-end"; line.style.gap = "5px";
+    if (mine) line.style.flexDirection = "row-reverse";
+    const bub = el("button", "bubble" + (m.type === "sticker" ? " sticker" : ""), m.body);
+    bub.setAttribute("aria-label", "リアクションをつける");
+    bub.onclick = () => { openPicker = openPicker === m.id ? null : m.id; render(); };
+    line.appendChild(bub);
+    line.appendChild(el("span", "stamp", hhmm(m.t)));
+    stack.appendChild(line);
+
+    const rx = reactions[m.id] || {};
+    const counts = {};
+    Object.entries(rx).forEach(([u, e]) => { (counts[e] = counts[e] || []).push(u); });
+    if (Object.keys(counts).length) {
+      const bar = el("div", "rx");
+      Object.entries(counts).forEach(([emoji, us]) => {
+        const b = el("button", us.includes(me.uid) ? "on" : null, `${emoji} ${us.length}`);
+        b.onclick = () => react(m.id, emoji);
+        bar.appendChild(b);
+      });
+      stack.appendChild(bar);
+    }
+
+    if (openPicker === m.id) {
+      const p = el("div", "picker");
+      REACTIONS.forEach(e => { const b = el("button", null, e); b.onclick = () => react(m.id, e); p.appendChild(b); });
+      stack.appendChild(p);
+    }
+
+    row.appendChild(stack);
+    log.appendChild(row);
+  });
+
+  if (stuck) log.scrollTop = log.scrollHeight;
+}
+
+me && me.name ? showHome() : showSetup();
+</script>
+</body>
+</html>
