@@ -128,6 +128,11 @@
   .toast .tx{flex:1;min-width:0}
   .toast .t1{font-family:var(--round);font-size:13px;margin:0}
   .toast .t2{font-size:12px;color:var(--muted);margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .crown{font-size:11px;margin-left:3px}
+  .alertbox{background:#FFF4E0;border:2px solid var(--amber);border-radius:18px;padding:16px;margin:0 0 14px}
+  .alertbox h3{font-family:var(--round);font-size:15px;color:var(--amber-ink);margin:0 0 6px}
+  .alertbox p{font-size:13px;color:#7a5a12;margin:0 0 10px;line-height:1.7}
+  .alertbox button{background:var(--amber);color:#fff;border-radius:999px;padding:8px 18px;font-weight:600;font-size:13px}
   .danger{background:#D64545;color:#fff}
   .danger2{background:#9B2C2C;color:#fff}
   .sep{border:none;border-top:1px solid var(--line);margin:20px 0 16px}
@@ -222,6 +227,10 @@ try {
   throw e;
 }
 
+const ADMIN_WORD = "kairi201478";
+let isAdmin = false;
+try { isAdmin = localStorage.getItem("admin") === "1"; } catch (e) {}
+
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
 const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 let me = load("me", null);
@@ -230,10 +239,84 @@ let current = null;
 
 let messages = [], reactions = {}, members = {}, cards = {};
 let openPicker = null, noticeMode = false, stickersOpen = false, pinnedHidden = false;
-let offMsgs = null, offRx = null, offMem = null, offCards = null, offTitle = null;
+let offMsgs = null, offRx = null, offMem = null, offCards = null, offTitle = null, offWarns = null;
+let warns = {};
 let rec = null, recTimer = null, recStart = 0, playing = null;
 
 /* ========== 1. 名前と誕生日 ========== */
+/* 管理者になる */
+function askAdmin() {
+  const veil = el("div", "veil"), sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "管理者になる"));
+  sheet.appendChild(el("p", null, "あいことばを入れてね。"));
+  const inp = el("input"); inp.type = "password"; inp.style.marginBottom = "12px";
+  sheet.appendChild(inp);
+  const ng = el("p", "warn"); ng.style.display = "none"; ng.style.margin = "-6px 0 12px";
+  sheet.appendChild(ng);
+  const ok = el("button", "primary", "けってい");
+  ok.style.marginBottom = "8px";
+  ok.onclick = () => {
+    if (inp.value.trim() === ADMIN_WORD) {
+      isAdmin = true;
+      try { localStorage.setItem("admin", "1"); } catch (e) {}
+      try { rooms.forEach(r => fb.set(fb.ref(db, `rooms/${r}/members/${me.uid}/admin`), true)); } catch (e) {}
+      veil.remove();
+      showSetup();
+    } else {
+      ng.textContent = "ちがうみたい。もう一回。";
+      ng.style.display = "block";
+    }
+  };
+  const no = el("button", "cancel", "やめる");
+  no.onclick = () => veil.remove();
+  inp.oninput = () => { ng.style.display = "none"; };
+  sheet.appendChild(ok); sheet.appendChild(no);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
+/* 警告を出す（管理者だけ） */
+const WARN_REASONS = [
+  "メッセージが良くなかった",
+  "いじめ",
+  "からかい"
+];
+
+function askWarn(m) {
+  const veil = el("div", "veil"), sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, m.name + " に警告を出す"));
+  sheet.appendChild(el("p", null, "その人にだけ「⚠️ 次からは気をつけましょう！」って出るよ。ほかの人には見えない。"));
+  WARN_REASONS.forEach(r => {
+    const b = el("button", "cancel", r);
+    b.style.marginBottom = "8px";
+    b.onclick = async () => {
+      try {
+        await fb.set(fb.ref(db, `rooms/${current}/warns/${m.uid}`), { reason: r, t: Date.now(), by: me.name });
+        veil.remove();
+      } catch (e) { fail("警告を出せませんでした。"); }
+    };
+    sheet.appendChild(b);
+  });
+  const no = el("button", "cancel", "やめる");
+  no.onclick = () => veil.remove();
+  sheet.appendChild(no);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
+/* 自分あての警告を見せる */
+function renderWarn(box) {
+  const w = warns[me.uid];
+  if (!w) return;
+  const b = el("div", "alertbox");
+  b.appendChild(el("h3", null, "⚠️ 次からは気をつけましょう！"));
+  b.appendChild(el("p", null, w.reason));
+  const ok = el("button", null, "わかった");
+  ok.onclick = () => { try { fb.remove(fb.ref(db, `rooms/${current}/warns/${me.uid}`)); } catch (e) {} };
+  b.appendChild(ok);
+  box.appendChild(b);
+}
+
 /* 1回目のかくにん */
 function askLogout1() {
   const veil = el("div", "veil"), sheet = el("div", "sheet");
@@ -273,7 +356,8 @@ function doLogout() {
     rooms.forEach(r => { try { fb.remove(fb.ref(db, `rooms/${r}/members/${me.uid}`)); } catch (e) {} });
   } catch (e) {}
   try {
-    ["me", "rooms", "lastSeen", "dmNames", "roomTitles"].forEach(k => localStorage.removeItem("renraku_" + k));
+    localStorage.clear();
+    isAdmin = false;
   } catch (e) {}
   location.reload();
 }
@@ -348,6 +432,18 @@ function showSetup() {
   };
   card.appendChild(go);
 
+  if (me && !isAdmin) {
+    card.appendChild(el("hr", "sep"));
+    const adminBtn = el("button", "cancel", "管理者になる");
+    adminBtn.style.marginBottom = "8px";
+    adminBtn.onclick = askAdmin;
+    card.appendChild(adminBtn);
+  }
+  if (me && isAdmin) {
+    card.appendChild(el("hr", "sep"));
+    card.appendChild(el("p", "small", "👑 このiPadは管理者だよ。メッセージを長押しすると、警告を出せる。"));
+  }
+
   if (me) {
     card.appendChild(el("hr", "sep"));
     card.appendChild(el("p", "small", "このiPadから、名前もグループもぜんぶ消して最初からやりなおすとき。"));
@@ -399,7 +495,7 @@ function markSeen() {
 function pushMember(room) {
   try {
     fb.update(fb.ref(db, `rooms/${room}/members/${me.uid}`), {
-      name: me.name, avatar: me.avatar, bday: me.bday || "", seen: Date.now()
+      name: me.name, avatar: me.avatar, bday: me.bday || "", seen: Date.now(), admin: isAdmin || null
     });
   } catch (e) {}
 }
@@ -514,8 +610,9 @@ function openRoom(name) {
 }
 
 function leaveRoom() {
-  [offMsgs, offRx, offMem, offCards, offTitle].forEach(f => { if (f) f(); });
-  offMsgs = offRx = offMem = offCards = offTitle = null;
+  [offMsgs, offRx, offMem, offCards, offTitle, offWarns].forEach(f => { if (f) f(); });
+  offMsgs = offRx = offMem = offCards = offTitle = offWarns = null;
+  warns = {};
   stopRec(true);
   lastSeen[current] = Date.now();
   store("lastSeen", lastSeen);
@@ -640,6 +737,12 @@ function askDM(uidOther, person) {
 
 function listen() {
   const room = current;
+  offWarns = fb.onValue(fb.ref(db, `rooms/${room}/warns`), (snap) => {
+    if (current !== room) return;
+    warns = snap.val() || {};
+    render();
+  });
+
   offTitle = fb.onValue(fb.ref(db, `rooms/${room}/title`), (snap) => {
     if (current !== room) return;
     const tv = snap.val(); if (tv) roomTitles[current] = tv; else delete roomTitles[current]; store("roomTitles", roomTitles);
@@ -998,11 +1101,11 @@ function render() {
     ents.forEach(([u, mm], idx) => {
       if (idx) ml.appendChild(document.createTextNode("・"));
       if (u === me.uid) {
-        ml.appendChild(document.createTextNode(mm.avatar + " " + mm.name + "(自分)"));
+        ml.appendChild(document.createTextNode(mm.avatar + " " + mm.name + (mm.admin ? "👑" : "") + "(自分)"));
       } else if (isDM(current)) {
         ml.appendChild(document.createTextNode(mm.avatar + " " + mm.name));
       } else {
-        const b = el("button", null, mm.avatar + " " + mm.name);
+        const b = el("button", null, mm.avatar + " " + mm.name + (mm.admin ? "👑" : ""));
         b.onclick = () => askDM(u, mm);
         ml.appendChild(b);
       }
@@ -1013,6 +1116,7 @@ function render() {
 
   const pin = document.getElementById("pinned");
   pin.innerHTML = "";
+  renderWarn(pin);
   renderBirthday(pin);
 
   const notices = shown.filter(m => m.type === "notice");
@@ -1065,7 +1169,11 @@ function render() {
     if (!mine) row.appendChild(el("div", "face", showName ? m.avatar : ""));
 
     const stack = el("div", "stack");
-    if (showName) stack.appendChild(el("p", "who", m.name));
+    if (showName) {
+      const who = el("p", "who", m.name);
+      if (members[m.uid] && members[m.uid].admin) who.appendChild(el("span", "crown", "👑"));
+      stack.appendChild(who);
+    }
 
     const line = el("div");
     line.style.display = "flex"; line.style.alignItems = "flex-end"; line.style.gap = "5px";
@@ -1099,6 +1207,12 @@ function render() {
       bub.onclick = () => { openPicker = openPicker === m.id ? null : m.id; render(); };
     }
     bub.setAttribute("aria-label", m.type === "voice" ? "声を再生する" : (m.type === "photo" ? "写真" : "リアクションをつける"));
+
+    if (!mine && isAdmin) {
+      const wasLong = longPress(bub, 700, () => askWarn(m));
+      const orig = bub.onclick;
+      bub.onclick = (ev) => { if (wasLong()) return; if (orig) orig(ev); };
+    }
     line.appendChild(bub);
     line.appendChild(el("span", "stamp", hhmm(m.t)));
     stack.appendChild(line);
