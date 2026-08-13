@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>ともだち連絡ノート</title>
+<title>楽楽連絡</title>
+<meta name="apple-mobile-web-app-title" content="楽楽連絡">
+<link rel="apple-touch-icon" href="icon.png">
 <style>
   :root{
     --teal:#0f766e; --amber:#E8A33D; --amber-ink:#B87415;
@@ -480,7 +482,7 @@ function showSetup() {
   let avatar = me?.avatar || AVATARS[0];
   app.innerHTML = "";
   const wrap = el("div", "center"), card = el("div", "card");
-  card.appendChild(el("p", "eyebrow", "ともだち連絡ノート"));
+  card.appendChild(el("p", "eyebrow", "楽楽連絡"));
   card.appendChild(el("h1", null, me ? "プロフィールを変える" : "まずは名前を決めよう"));
 
   card.appendChild(el("label", null, "名前（みんなに見える）"));
@@ -545,6 +547,14 @@ function showSetup() {
     showHome();
   };
   card.appendChild(go);
+
+  if (me) {
+    card.appendChild(el("hr", "sep"));
+    const icoBtn = el("button", "cancel", "🎨 アプリのアイコンを描く");
+    icoBtn.style.marginBottom = "8px";
+    icoBtn.onclick = makeIcon;
+    card.appendChild(icoBtn);
+  }
 
   if (me) {
     card.appendChild(el("hr", "sep"));
@@ -1054,8 +1064,11 @@ function openMembers() {
 /* ========== おえかき ========== */
 const PENS = ["#243330", "#D64545", "#E8A33D", "#0f766e", "#3B6FD4", "#C2447A", "#7A4FBF", "#ffffff"];
 
+const BGS = ["#0f766e", "#E8A33D", "#D64545", "#3B6FD4", "#C2447A", "#7A4FBF", "#243330", "#ffffff"];
+
 function openDraw(opts) {
   const bg = opts.bg || null;
+  let fillColor = opts.fill || null;
   const wrap = el("div", "drawwrap");
   const cv = document.createElement("canvas");
   if (!bg) cv.className = "chk";
@@ -1077,6 +1090,7 @@ function openDraw(opts) {
     } else {
       cv.width = 420; cv.height = 420;
       ctx.clearRect(0, 0, cv.width, cv.height);
+      if (fillColor) { ctx.fillStyle = fillColor; ctx.fillRect(0, 0, cv.width, cv.height); }
       snap();
     }
   };
@@ -1119,6 +1133,30 @@ function openDraw(opts) {
   });
   wrap.appendChild(colors);
 
+  if (opts.pickBg) {
+    const bgrow = el("div", "tools");
+    const bl = el("span", null, "したじ");
+    bl.style.cssText = "color:rgba(255,255,255,.75);font-size:12px;align-self:center;margin-right:2px";
+    bgrow.appendChild(bl);
+    const bbtns = BGS.map(c => {
+      const b = el("button", "swatch" + (c === fillColor ? " on" : ""));
+      b.style.background = c;
+      b.onclick = () => {
+        fillColor = c;
+        bbtns.forEach(x => x.classList.remove("on"));
+        b.classList.add("on");
+        const keep = ctx.getImageData(0, 0, cv.width, cv.height);
+        ctx.globalCompositeOperation = "destination-over";
+        ctx.fillStyle = c;
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.globalCompositeOperation = "source-over";
+      };
+      bgrow.appendChild(b);
+      return b;
+    });
+    wrap.appendChild(bgrow);
+  }
+
   const tools = el("div", "tools");
   const sizes = [{ n: "ほそい", v: 4 }, { n: "ふつう", v: 8 }, { n: "ふとい", v: 18 }];
   const sbtns = sizes.map(sz => {
@@ -1157,6 +1195,38 @@ function openDraw(opts) {
 
   setup();
   app.appendChild(wrap);
+}
+
+/* アプリのアイコンを描く */
+function makeIcon() {
+  openDraw({
+    title: "アプリのアイコンをかこう",
+    okLabel: "できた！",
+    fill: "#0f766e",
+    pickBg: true,
+    onDone: (data) => showIconResult(data)
+  });
+}
+
+function showIconResult(data) {
+  const veil = el("div", "veil"), sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "できた！"));
+  const im = document.createElement("img");
+  im.src = data;
+  im.style.cssText = "width:120px;height:120px;border-radius:26px;display:block;margin:0 auto 14px;box-shadow:0 3px 12px rgba(36,51,48,.2)";
+  sheet.appendChild(im);
+  sheet.appendChild(el("p", "small", "この絵を長おしして「“写真”に保存」してね。そのあとGitHubにアップすると、ホーム画面のアイコンになるよ。"));
+
+  const again = el("button", "cancel", "描きなおす");
+  again.style.marginBottom = "8px";
+  again.onclick = () => { veil.remove(); makeIcon(); };
+  sheet.appendChild(again);
+
+  const no = el("button", "cancel", "とじる");
+  no.onclick = () => veil.remove();
+  sheet.appendChild(no);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
 }
 
 /* じぶんのスタンプ */
