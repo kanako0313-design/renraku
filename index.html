@@ -128,6 +128,31 @@
   .toast .tx{flex:1;min-width:0}
   .toast .t1{font-family:var(--round);font-size:13px;margin:0}
   .toast .t2{font-size:12px;color:var(--muted);margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mysticker{max-width:130px;max-height:130px;display:block;border-radius:10px}
+  .drawwrap{position:fixed;inset:0;z-index:140;background:#20302c;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;gap:10px}
+  .drawwrap canvas{background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);touch-action:none;max-width:100%;max-height:58vh}
+  .drawwrap .chk{background-image:linear-gradient(45deg,#e7eae4 25%,transparent 25%),linear-gradient(-45deg,#e7eae4 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e7eae4 75%),linear-gradient(-45deg,transparent 75%,#e7eae4 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}
+  .tools{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;max-width:460px}
+  .tools button{background:rgba(255,255,255,.15);color:#fff;border-radius:999px;padding:8px 13px;font-size:13px;font-family:var(--round)}
+  .tools button.on{background:#fff;color:#20302c;font-weight:700}
+  .swatch{width:34px;height:34px;border-radius:999px;padding:0;border:3px solid rgba(255,255,255,.3)}
+  .swatch.on{border-color:#fff;transform:scale(1.12)}
+  .drawwrap .go{background:var(--teal);color:#fff;font-weight:700;padding:12px 30px;border-radius:999px;font-size:15px}
+  .drawwrap .quit{color:rgba(255,255,255,.75);font-size:13px;padding:8px}
+  .keyword{font-size:11px;opacity:.8;font-weight:400;margin-left:5px}
+  .memberline{cursor:pointer}
+  .mlist button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;background:#f4f6f1;margin-bottom:8px;font-size:15px}
+  .viewer{position:fixed;inset:0;z-index:120;background:rgba(12,20,18,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+  .viewer img{max-width:100%;max-height:78vh;border-radius:14px;object-fit:contain}
+  .viewer .vrow{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;justify-content:center}
+  .viewer .vrow button{background:rgba(255,255,255,.16);color:#fff;border-radius:999px;padding:9px 15px;font-size:18px}
+  .viewer .vclose{position:absolute;top:calc(14px + env(safe-area-inset-top));right:16px;color:#fff;font-size:26px;padding:6px 12px}
+  .viewer .vnote{color:rgba(255,255,255,.7);font-size:12px;margin-top:12px}
+  .busy{position:fixed;left:0;right:0;top:0;z-index:130;background:var(--teal);color:#fff;font-size:13px;text-align:center;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;font-family:var(--round)}
+  textarea.note-in{width:100%;min-height:110px;border:2px solid var(--line);border-radius:16px;padding:12px 14px;font:inherit;font-size:15px;resize:none;margin-bottom:12px;background:#fff;color:var(--ink)}
+  .inbox-item{background:#fff;border-radius:16px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(36,51,48,.08)}
+  .inbox-item .ih{font-size:11px;color:var(--muted);margin:0 0 5px}
+  .inbox-item .ib{font-size:14px;margin:0;line-height:1.7;white-space:pre-wrap;word-break:break-word}
   .crown{font-size:11px;margin-left:3px}
   .alertbox{background:#FFF4E0;border:2px solid var(--amber);border-radius:18px;padding:16px;margin:0 0 14px}
   .alertbox h3{font-family:var(--round);font-size:15px;color:var(--amber-ink);margin:0 0 6px}
@@ -231,6 +256,15 @@ const ADMIN_WORD = "kairi201478";
 let isAdmin = false;
 try { isAdmin = localStorage.getItem("admin") === "1"; } catch (e) {}
 
+let busyEl = null;
+function busy(on, label) {
+  if (busyEl) { busyEl.remove(); busyEl = null; }
+  if (on) {
+    busyEl = el("div", "busy", label || "アップデート中…");
+    document.body.appendChild(busyEl);
+  }
+}
+
 const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
 const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 let me = load("me", null);
@@ -244,6 +278,86 @@ let warns = {};
 let rec = null, recTimer = null, recStart = 0, playing = null;
 
 /* ========== 1. 名前と誕生日 ========== */
+/* 感想・通報を送る */
+function openNote(kind) {
+  const isReport = kind === "report";
+  const veil = el("div", "veil"), sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, isReport ? "通報する" : "フィードバックを送信する"));
+  sheet.appendChild(el("p", null, isReport ? "何がいけなかったですか？" : "使ってみての感想などを書いてね。"));
+  const ta = document.createElement("textarea");
+  ta.className = "note-in";
+  ta.maxLength = 600;
+  ta.placeholder = isReport ? "できるだけくわしく書いてね" : "こんな機能がほしい、ここが使いにくい、など";
+  sheet.appendChild(ta);
+  if (isReport) sheet.appendChild(el("p", "small", "こわい思いをしたときや、ひどいことをされたときは、アプリだけで終わらせないで、おうちの人にも話してね。"));
+
+  const ok = el("button", "primary", "送る");
+  ok.style.marginBottom = "8px";
+  ok.onclick = async () => {
+    const t = ta.value.trim();
+    if (!t) return;
+    ok.disabled = true; ok.textContent = "送信中…";
+    try {
+      await fb.push(fb.ref(db, isReport ? "reports" : "feedback"), {
+        text: t.slice(0, 600),
+        name: me ? me.name : "だれか",
+        uid: me ? me.uid : "",
+        room: current || "",
+        t: Date.now()
+      });
+      veil.remove();
+      fail("");
+      alert(isReport ? "通報を送ったよ。ありがとう。" : "送ったよ。ありがとう！");
+    } catch (e) {
+      ok.disabled = false; ok.textContent = "送る";
+      fail("送れませんでした。もう一度おしてみてね。");
+    }
+  };
+  const no = el("button", "cancel", "やめる");
+  no.onclick = () => veil.remove();
+  sheet.appendChild(ok); sheet.appendChild(no);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
+/* 管理者だけ：とどいたものを見る */
+async function openInbox() {
+  const veil = el("div", "veil"), sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "とどいたもの"));
+  const box = el("div");
+  box.appendChild(el("p", "small", "読みこみ中…"));
+  sheet.appendChild(box);
+  const no = el("button", "cancel", "とじる");
+  no.onclick = () => veil.remove();
+  sheet.appendChild(no);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+
+  try {
+    const [rs, fs2] = await Promise.all([
+      fb.get(fb.ref(db, "reports")),
+      fb.get(fb.ref(db, "feedback"))
+    ]);
+    const list = [];
+    Object.values(rs.val() || {}).forEach(x => list.push(Object.assign({ kind: "🚩 通報" }, x)));
+    Object.values(fs2.val() || {}).forEach(x => list.push(Object.assign({ kind: "💬 感想" }, x)));
+    list.sort((a, b) => (b.t || 0) - (a.t || 0));
+
+    box.innerHTML = "";
+    if (!list.length) { box.appendChild(el("p", "small", "まだ何もとどいてないよ。")); return; }
+    list.slice(0, 30).forEach(x => {
+      const it = el("div", "inbox-item");
+      const d = new Date(x.t || 0);
+      it.appendChild(el("p", "ih", x.kind + "・" + (x.name || "だれか") + "・" + (d.getMonth() + 1) + "/" + d.getDate()));
+      it.appendChild(el("p", "ib", x.text || ""));
+      box.appendChild(it);
+    });
+  } catch (e) {
+    box.innerHTML = "";
+    box.appendChild(el("p", "small", "読みこめませんでした。"));
+  }
+}
+
 /* 管理者になる */
 function askAdmin() {
   const veil = el("div", "veil"), sheet = el("div", "sheet");
@@ -432,6 +546,18 @@ function showSetup() {
   };
   card.appendChild(go);
 
+  if (me) {
+    card.appendChild(el("hr", "sep"));
+    const fbBtn = el("button", "cancel", "フィードバックを送信する");
+    fbBtn.style.marginBottom = "8px";
+    fbBtn.onclick = () => openNote("feedback");
+    card.appendChild(fbBtn);
+    const rpBtn = el("button", "cancel", "通報する");
+    rpBtn.style.marginBottom = "8px";
+    rpBtn.onclick = () => openNote("report");
+    card.appendChild(rpBtn);
+  }
+
   if (me && !isAdmin) {
     card.appendChild(el("hr", "sep"));
     const adminBtn = el("button", "cancel", "管理者になる");
@@ -442,6 +568,10 @@ function showSetup() {
   if (me && isAdmin) {
     card.appendChild(el("hr", "sep"));
     card.appendChild(el("p", "small", "👑 このiPadは管理者だよ。メッセージを長押しすると、警告を出せる。"));
+    const inbox = el("button", "cancel", "とどいたものを見る");
+    inbox.style.marginBottom = "8px";
+    inbox.onclick = openInbox;
+    card.appendChild(inbox);
   }
 
   if (me) {
@@ -637,7 +767,9 @@ function showChat() {
     + '<button id="send" aria-label="送る" disabled>➤</button>'
     + '</div></footer>';
 
-  document.querySelector(".room").textContent = roomLabel(current);
+  const head = document.querySelector(".room");
+  head.textContent = roomLabel(current);
+  if (!isDM(current) && roomTitles[current]) head.appendChild(el("span", "keyword", "〈" + current + "〉"));
   document.getElementById("back").onclick = leaveRoom;
   const pen = document.getElementById("rename");
   if (isDM(current)) pen.style.display = "none";
@@ -645,7 +777,7 @@ function showChat() {
   document.getElementById("photoBtn").onclick = pickPhoto;
 
   const stickerBar = document.getElementById("stickers");
-  STICKERS.forEach(s => { const b = el("button", null, s); b.onclick = () => send("sticker", s); stickerBar.appendChild(b); });
+  buildStickerBar();
   document.getElementById("stickerBtn").onclick = () => {
     stickersOpen = !stickersOpen;
     stickerBar.style.display = stickersOpen ? "grid" : "none";
@@ -747,7 +879,10 @@ function listen() {
     if (current !== room) return;
     const tv = snap.val(); if (tv) roomTitles[current] = tv; else delete roomTitles[current]; store("roomTitles", roomTitles);
     const t = document.querySelector(".room");
-    if (t) t.textContent = roomLabel(current);
+    if (t) {
+      t.textContent = roomLabel(current);
+      if (!isDM(current) && roomTitles[current]) t.appendChild(el("span", "keyword", "〈" + current + "〉"));
+    }
   });
   offMsgs = fb.onValue(fb.ref(db, `rooms/${room}/messages`), (snap) => {
     if (current !== room) return;
@@ -786,14 +921,15 @@ async function trim(room) {
 }
 
 async function send(type, body, extra) {
-  const b = (type === "voice" || type === "photo") ? body : (body || "").trim();
+  const HEAVY = ["voice", "photo", "mysticker"];
+  const b = HEAVY.indexOf(type) !== -1 ? body : (body || "").trim();
   if (!b || !current) return;
   const room = current;
   const textIn = document.getElementById("text");
   try {
     const msg = Object.assign({
       uid: me.uid, name: me.name, avatar: me.avatar, type,
-      body: (type === "voice" || type === "photo") ? b : b.slice(0, 1000), t: Date.now()
+      body: HEAVY.indexOf(type) !== -1 ? b : b.slice(0, 1000), t: Date.now()
     }, extra || {});
     await fb.push(fb.ref(db, `rooms/${room}/messages`), msg);
     if (type === "text" || type === "notice") {
@@ -860,7 +996,7 @@ function toast(room, m) {
   box.appendChild(el("div", null, m.avatar || "💬")).style.fontSize = "22px";
   const tx = el("div", "tx");
   tx.appendChild(el("p", "t1", m.name + "・" + roomLabel(room)));
-  const body = m.type === "photo" ? "📷 写真" : (m.type === "voice" ? "🎤 声のメッセージ" : (m.type === "sticker" ? m.body : m.body));
+  const body = m.type === "photo" ? "📷 写真" : (m.type === "voice" ? "🎤 声のメッセージ" : (m.type === "mysticker" ? "✏️ スタンプ" : m.body));
   tx.appendChild(el("p", "t2", body));
   box.appendChild(tx);
   box.onclick = () => { box.remove(); openRoom(room); };
@@ -883,8 +1019,198 @@ function paintBadges() {
   });
 }
 
+/* メンバーを全員みる */
+function openMembers() {
+  const veil = el("div", "veil"), sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "このグループの人"));
+  if (!isDM(current) && roomTitles[current]) sheet.appendChild(el("p", "small", "あいことば：" + current));
+  const list = el("div", "mlist");
+  const ents = Object.entries(members);
+  if (!ents.length) list.appendChild(el("p", "small", "まだ だれもいないみたい。"));
+  ents.forEach(([u, mm]) => {
+    const b = el("button");
+    const face = el("span", null, mm.avatar || "🙂");
+    face.style.fontSize = "22px";
+    b.appendChild(face);
+    const nm = el("span", null, mm.name + (mm.admin ? " 👑" : "") + (u === me.uid ? "（自分）" : ""));
+    nm.style.flex = "1";
+    b.appendChild(nm);
+    if (u !== me.uid && !isDM(current)) {
+      const hint = el("span", null, "2人で話す");
+      hint.style.cssText = "font-size:12px;color:var(--muted)";
+      b.appendChild(hint);
+      b.onclick = () => { veil.remove(); askDM(u, mm); };
+    }
+    list.appendChild(b);
+  });
+  sheet.appendChild(list);
+  const no = el("button", "cancel", "とじる");
+  no.onclick = () => veil.remove();
+  sheet.appendChild(no);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
+/* ========== おえかき ========== */
+const PENS = ["#243330", "#D64545", "#E8A33D", "#0f766e", "#3B6FD4", "#C2447A", "#7A4FBF", "#ffffff"];
+
+function openDraw(opts) {
+  const bg = opts.bg || null;
+  const wrap = el("div", "drawwrap");
+  const cv = document.createElement("canvas");
+  if (!bg) cv.className = "chk";
+  const ctx = cv.getContext("2d");
+
+  let color = PENS[0], width = 8, eraser = false;
+  const undos = [];
+
+  const setup = () => {
+    if (bg) {
+      const im = new Image();
+      im.onload = () => {
+        const w = Math.min(800, im.width), h = Math.round(im.height * (w / im.width));
+        cv.width = w; cv.height = h;
+        ctx.drawImage(im, 0, 0, w, h);
+        snap();
+      };
+      im.src = bg;
+    } else {
+      cv.width = 420; cv.height = 420;
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      snap();
+    }
+  };
+  const snap = () => { try { undos.push(ctx.getImageData(0, 0, cv.width, cv.height)); if (undos.length > 12) undos.shift(); } catch (e) {} };
+
+  let drawing = false, lastX = 0, lastY = 0;
+  const pos = (e) => {
+    const r = cv.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: (t.clientX - r.left) * (cv.width / r.width), y: (t.clientY - r.top) * (cv.height / r.height) };
+  };
+  const begin = (e) => { e.preventDefault(); snap(); drawing = true; const p = pos(e); lastX = p.x; lastY = p.y; stroke(p.x, p.y); };
+  const move = (e) => { if (!drawing) return; e.preventDefault(); const p = pos(e); stroke(p.x, p.y); };
+  const end = () => { drawing = false; };
+  const stroke = (x, y) => {
+    ctx.globalCompositeOperation = eraser ? "destination-out" : "source-over";
+    ctx.strokeStyle = color; ctx.lineWidth = width;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
+    lastX = x; lastY = y;
+  };
+  cv.addEventListener("touchstart", begin, { passive: false });
+  cv.addEventListener("touchmove", move, { passive: false });
+  cv.addEventListener("touchend", end);
+  cv.addEventListener("mousedown", begin);
+  cv.addEventListener("mousemove", move);
+  cv.addEventListener("mouseup", end);
+  cv.addEventListener("mouseleave", end);
+
+  wrap.appendChild(el("p", null, opts.title || "ゆびでかいてね")).style.cssText = "color:#fff;font-size:14px;margin:0;font-family:var(--round)";
+  wrap.appendChild(cv);
+
+  const colors = el("div", "tools");
+  const cbtns = PENS.map(c => {
+    const b = el("button", "swatch" + (c === color ? " on" : ""));
+    b.style.background = c;
+    b.onclick = () => { color = c; eraser = false; cbtns.forEach(x => x.classList.remove("on")); b.classList.add("on"); refreshTools(); };
+    colors.appendChild(b);
+    return b;
+  });
+  wrap.appendChild(colors);
+
+  const tools = el("div", "tools");
+  const sizes = [{ n: "ほそい", v: 4 }, { n: "ふつう", v: 8 }, { n: "ふとい", v: 18 }];
+  const sbtns = sizes.map(sz => {
+    const b = el("button", sz.v === width ? "on" : null, sz.n);
+    b.onclick = () => { width = sz.v; eraser = false; refreshTools(); };
+    tools.appendChild(b);
+    return b;
+  });
+  const er = el("button", null, "けしゴム");
+  er.onclick = () => { eraser = !eraser; refreshTools(); };
+  tools.appendChild(er);
+  const un = el("button", null, "もどす");
+  un.onclick = () => { if (undos.length > 1) { undos.pop(); ctx.putImageData(undos[undos.length - 1], 0, 0); } };
+  tools.appendChild(un);
+  const cl = el("button", null, "ぜんぶ消す");
+  cl.onclick = () => { snap(); if (bg) { setup(); } else { ctx.clearRect(0, 0, cv.width, cv.height); } };
+  tools.appendChild(cl);
+  wrap.appendChild(tools);
+
+  const refreshTools = () => {
+    sbtns.forEach((b, i) => b.classList.toggle("on", !eraser && sizes[i].v === width));
+    er.classList.toggle("on", eraser);
+  };
+
+  const go = el("button", "go", opts.okLabel || "できた！");
+  go.onclick = () => {
+    const data = bg ? cv.toDataURL("image/jpeg", 0.8) : cv.toDataURL("image/png");
+    wrap.remove();
+    opts.onDone(data, cv.width, cv.height);
+  };
+  wrap.appendChild(go);
+
+  const quit = el("button", "quit", "やめる");
+  quit.onclick = () => wrap.remove();
+  wrap.appendChild(quit);
+
+  setup();
+  app.appendChild(wrap);
+}
+
+/* じぶんのスタンプ */
+let myStickers = load("myStickers", []);
+
+function makeSticker() {
+  openDraw({
+    title: "スタンプをかこう",
+    okLabel: "スタンプにする",
+    onDone: (data) => {
+      myStickers.unshift(data);
+      if (myStickers.length > 12) myStickers = myStickers.slice(0, 12);
+      try { store("myStickers", myStickers); }
+      catch (e) { myStickers.shift(); fail("スタンプがいっぱいかも。古いのを消してね。"); return; }
+      buildStickerBar();
+    }
+  });
+}
+
+function buildStickerBar() {
+  const bar = document.getElementById("stickers");
+  if (!bar) return;
+  bar.innerHTML = "";
+  const add = el("button", null, "✏️");
+  add.title = "じぶんでかく";
+  add.onclick = makeSticker;
+  bar.appendChild(add);
+
+  myStickers.forEach((d, i) => {
+    const b = el("button");
+    const im = document.createElement("img");
+    im.src = d; im.style.cssText = "width:30px;height:30px;object-fit:contain";
+    b.appendChild(im);
+    const wasLong = longPress(b, 700, () => {
+      if (confirm("このスタンプを消す？")) {
+        myStickers.splice(i, 1);
+        store("myStickers", myStickers);
+        buildStickerBar();
+      }
+    });
+    b.onclick = () => { if (!wasLong()) send("mysticker", d); };
+    bar.appendChild(b);
+  });
+
+  STICKERS.forEach(x => {
+    const b = el("button", null, x);
+    b.onclick = () => send("sticker", x);
+    bar.appendChild(b);
+  });
+}
+
 /* ========== 写真 ========== */
 const PHOTO_W = 800;
+const PHOTO_HI = 1600;
 
 function pickPhoto() {
   const inp = document.createElement("input");
@@ -898,23 +1224,98 @@ function pickPhoto() {
 }
 
 function shrinkAndSend(file) {
+  busy(true, "写真を用意中…");
   const url = URL.createObjectURL(file);
   const img = new Image();
-  img.onload = () => {
+  img.onload = async () => {
     try {
-      const scale = Math.min(1, PHOTO_W / img.width);
-      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-      const cv = document.createElement("canvas");
-      cv.width = w; cv.height = h;
-      cv.getContext("2d").drawImage(img, 0, 0, w, h);
-      const data = cv.toDataURL("image/jpeg", 0.75);
+      const make = (maxW, q) => {
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const cv = document.createElement("canvas");
+        cv.width = w; cv.height = h;
+        cv.getContext("2d").drawImage(img, 0, 0, w, h);
+        return { data: cv.toDataURL("image/jpeg", q), w, h };
+      };
+
+      const small = make(PHOTO_W, 0.75);
       URL.revokeObjectURL(url);
-      if (data.length > 900000) { fail("その写真は大きすぎました。ほかのを選んでね。"); return; }
-      send("photo", data, { pw: w, ph: h });
-    } catch (e) { fail("写真をうまく読めませんでした。"); }
+      if (small.data.length > 900000) { busy(false); fail("その写真は大きすぎました。ほかのを選んでね。"); return; }
+
+      const big = make(PHOTO_HI, 0.82);
+      busy(false);
+      askPhotoWay(small, big);
+    } catch (e) { busy(false); fail("写真をうまく読めませんでした。"); }
   };
-  img.onerror = () => { URL.revokeObjectURL(url); fail("その写真は読めませんでした。"); };
+  img.onerror = () => { busy(false); URL.revokeObjectURL(url); fail("その写真は読めませんでした。"); };
   img.src = url;
+}
+
+/* 写真をどう送る？ */
+function askPhotoWay(small, big) {
+  const veil = el("div", "veil"), sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "この写真を送る？"));
+  const prev = document.createElement("img");
+  prev.src = small.data;
+  prev.style.cssText = "width:100%;border-radius:14px;margin-bottom:14px;display:block";
+  sheet.appendChild(prev);
+
+  const sendIt = async (data, w, h, hi) => {
+    const extra = { pw: w, ph: h };
+    if (hi && hi.data.length <= 700000 && hi.w > w) extra.hi = hi.data;
+    busy(true, "アップデート中…");
+    try { await send("photo", data, extra); } finally { busy(false); }
+  };
+
+  const plain = el("button", "primary", "このまま送る");
+  plain.style.marginBottom = "8px";
+  plain.onclick = () => { veil.remove(); sendIt(small.data, small.w, small.h, big); };
+  sheet.appendChild(plain);
+
+  const draw = el("button", "cancel", "✏️ らくがきしてから送る");
+  draw.style.marginBottom = "8px";
+  draw.onclick = () => {
+    veil.remove();
+    openDraw({
+      bg: small.data,
+      title: "写真にらくがき",
+      okLabel: "これで送る",
+      onDone: (data, w, h) => sendIt(data, w, h, null)
+    });
+  };
+  sheet.appendChild(draw);
+
+  const no = el("button", "cancel", "やめる");
+  no.onclick = () => veil.remove();
+  sheet.appendChild(no);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
+/* 写真を大きく見る */
+function openViewer(m) {
+  const v = el("div", "viewer");
+  const close = el("button", "vclose", "×");
+  close.onclick = () => v.remove();
+  v.appendChild(close);
+
+  const im = document.createElement("img");
+  im.src = m.hi || m.body;
+  im.alt = "写真";
+  v.appendChild(im);
+
+  const row = el("div", "vrow");
+  REACTIONS.forEach(e => {
+    const b = el("button", null, e);
+    b.onclick = () => { react(m.id, e); v.remove(); };
+    row.appendChild(b);
+  });
+  v.appendChild(row);
+
+  if (!m.hi) v.appendChild(el("p", "vnote", "この写真はキレイ版がないよ（前に送ったやつ）"));
+
+  v.onclick = (ev) => { if (ev.target === v || ev.target === im) v.remove(); };
+  app.appendChild(v);
 }
 
 /* ========== ボイスメッセージ ========== */
@@ -1095,24 +1496,17 @@ function render() {
 
   const ml = document.querySelector(".memberline");
   if (ml) {
-    ml.innerHTML = "";
     const ents = Object.entries(members);
-    if (!ents.length) ml.appendChild(document.createTextNode(me.avatar + " " + me.name + "(自分)"));
-    ents.forEach(([u, mm], idx) => {
-      if (idx) ml.appendChild(document.createTextNode("・"));
-      if (u === me.uid) {
-        ml.appendChild(document.createTextNode(mm.avatar + " " + mm.name + (mm.admin ? "👑" : "") + "(自分)"));
-      } else if (isDM(current)) {
-        ml.appendChild(document.createTextNode(mm.avatar + " " + mm.name));
-      } else {
-        const b = el("button", null, mm.avatar + " " + mm.name + (mm.admin ? "👑" : ""));
-        b.onclick = () => askDM(u, mm);
-        ml.appendChild(b);
-      }
-    });
+    const names = ents.map(([u, mm]) => mm.avatar + mm.name + (mm.admin ? "👑" : ""));
+    ml.textContent = (names.length ? names.join("・") : me.avatar + me.name) + (ents.length > 1 && !isDM(current) ? "  ▸" : "");
+    ml.onclick = openMembers;
   }
+
   const rt = document.querySelector(".room");
-  if (rt) rt.textContent = roomLabel(current);
+  if (rt) {
+    rt.textContent = roomLabel(current);
+    if (!isDM(current) && roomTitles[current]) rt.appendChild(el("span", "keyword", "〈" + current + "〉"));
+  }
 
   const pin = document.getElementById("pinned");
   pin.innerHTML = "";
@@ -1188,6 +1582,15 @@ function render() {
       im.src = m.body;
       im.alt = "写真";
       if (m.pw && m.ph) im.style.aspectRatio = m.pw + " / " + m.ph;
+      bub.appendChild(im);
+      bub.onclick = () => openViewer(m);
+    } else if (m.type === "mysticker") {
+      bub = el("button");
+      bub.style.cssText = "padding:0;background:none;border:none";
+      const im = document.createElement("img");
+      im.className = "mysticker";
+      im.src = m.body;
+      im.alt = "スタンプ";
       bub.appendChild(im);
       bub.onclick = () => { openPicker = openPicker === m.id ? null : m.id; render(); };
     } else if (m.type === "voice") {
