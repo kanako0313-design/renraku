@@ -116,6 +116,18 @@
   #send:disabled{opacity:.3}
   #send.notice{background:var(--amber)}
   #err{font-size:12px;background:#FDECEC;color:#9B2C2C;padding:8px 12px;border-radius:12px;margin:0 16px 8px;display:none}
+  .memberline{font-size:11px;opacity:.85;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pencil{font-size:14px;padding:2px 6px;opacity:.9;flex-shrink:0}
+  .photo{max-width:220px;border-radius:16px;display:block;box-shadow:0 1px 3px rgba(36,51,48,.12);background:#e8ebe4}
+  .seen{font-size:10px;color:#8b968f;margin:3px 4px 0;line-height:1.5;max-width:200px}
+  .row.mine .seen{text-align:right}
+  .memberline button{color:inherit;text-decoration:underline;padding:0 2px;font-size:11px}
+  .room-item .dot.dm{background:#FDE7EF;color:#C2447A}
+  .room-item .badge{background:#D64545;color:#fff;font-size:11px;font-weight:600;min-width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0}
+  .toast{position:fixed;left:16px;right:16px;top:calc(10px + env(safe-area-inset-top));z-index:80;background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 6px 24px rgba(36,51,48,.22);display:flex;gap:10px;align-items:center;max-width:420px;margin:0 auto}
+  .toast .tx{flex:1;min-width:0}
+  .toast .t1{font-family:var(--round);font-size:13px;margin:0}
+  .toast .t2{font-size:12px;color:var(--muted);margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .warn{font-size:12px;color:#9B2C2C;background:#FDECEC;border-radius:12px;padding:8px 12px;margin:-12px 0 16px;line-height:1.6}
   /* ---- 誕生日 ---- */
   .bday{background:#fff;border-radius:16px;padding:14px 16px;margin:0 0 10px;box-shadow:0 2px 8px rgba(36,51,48,.08);border-left:5px solid #E86FA3}
@@ -214,7 +226,7 @@ let current = null;
 
 let messages = [], reactions = {}, members = {}, cards = {};
 let openPicker = null, noticeMode = false, stickersOpen = false, pinnedHidden = false;
-let offMsgs = null, offRx = null, offMem = null, offCards = null;
+let offMsgs = null, offRx = null, offMem = null, offCards = null, offTitle = null;
 let rec = null, recTimer = null, recStart = 0, playing = null;
 
 /* ========== 1. 名前と誕生日 ========== */
@@ -317,9 +329,20 @@ async function nameTakenIn(room) {
   return false;
 }
 
+/* 今ここまで読んだ、を記録する */
+let seenTimer = null;
+function markSeen() {
+  if (!current || !messages.length) return;
+  const last = messages[messages.length - 1];
+  if (seenTimer) clearTimeout(seenTimer);
+  seenTimer = setTimeout(() => {
+    try { fb.set(fb.ref(db, `rooms/${current}/members/${me.uid}/seenAt`), last.t); } catch (e) {}
+  }, 800);
+}
+
 function pushMember(room) {
   try {
-    fb.set(fb.ref(db, `rooms/${room}/members/${me.uid}`), {
+    fb.update(fb.ref(db, `rooms/${room}/members/${me.uid}`), {
       name: me.name, avatar: me.avatar, bday: me.bday || "", seen: Date.now()
     });
   } catch (e) {}
@@ -328,6 +351,7 @@ function pushMember(room) {
 /* ========== 2. グループ一覧 ========== */
 function showHome() {
   app.innerHTML = "";
+  startWatch();
   const head = el("div", "homehead");
   head.appendChild(el("h1", null, "グループ"));
   const prof = el("button", "room-item", me.avatar + " " + me.name);
@@ -397,8 +421,11 @@ function longPress(node, ms, fn) {
 
 function roomButton(name) {
   const b = el("button", "room-item");
-  b.appendChild(el("div", "dot", "💬"));
-  b.appendChild(el("div", "nm", name));
+  b.dataset.room = name;
+  b.appendChild(el("div", "dot" + (isDM(name) ? " dm" : ""), isDM(name) ? "👤" : "💬"));
+  b.appendChild(el("div", "nm", roomLabel(name)));
+  const n = unread[name] || 0;
+  if (n > 0) b.appendChild(el("div", "badge", n > 99 ? "99+" : String(n)));
   b.appendChild(el("div", "arrow", "›"));
   const wasLong = longPress(b, 1000, () => askDelete(name));
   b.onclick = () => { if (!wasLong()) openRoom(name); };
@@ -407,7 +434,7 @@ function roomButton(name) {
 
 function askDelete(name) {
   const veil = el("div", "veil"), sheet = el("div", "sheet");
-  sheet.appendChild(el("h2", null, "「" + name + "」を消す？"));
+  sheet.appendChild(el("h2", null, "「" + roomLabel(name) + "」を消す？"));
   sheet.appendChild(el("p", null, "リストから消えるだけで、トークの中身は残ってるよ。もう一度おなじあいことばを入れれば、また入れる。"));
   const del = el("button", "del", "リストから消す");
   del.onclick = () => { rooms = rooms.filter(r => r !== name); store("rooms", rooms); veil.remove(); showHome(); };
@@ -421,6 +448,9 @@ function askDelete(name) {
 /* ========== 3. トーク ========== */
 function openRoom(name) {
   current = name;
+  unread[name] = 0;
+  lastSeen[name] = Date.now();
+  store("lastSeen", lastSeen);
   messages = []; reactions = {}; members = {}; cards = {};
   openPicker = null; noticeMode = false; stickersOpen = false; pinnedHidden = false;
   pushMember(name);
@@ -428,29 +458,38 @@ function openRoom(name) {
 }
 
 function leaveRoom() {
-  [offMsgs, offRx, offMem, offCards].forEach(f => { if (f) f(); });
-  offMsgs = offRx = offMem = offCards = null;
+  [offMsgs, offRx, offMem, offCards, offTitle].forEach(f => { if (f) f(); });
+  offMsgs = offRx = offMem = offCards = offTitle = null;
   stopRec(true);
+  lastSeen[current] = Date.now();
+  store("lastSeen", lastSeen);
+  unread[current] = 0;
   current = null;
   showHome();
 }
 
 function showChat() {
   app.innerHTML = '<header><button class="back" id="back" aria-label="グループ一覧にもどる">‹</button>'
-    + '<div style="flex:1;min-width:0"><p class="room"></p><p class="sub"></p></div></header>'
+    + '<div style="flex:1;min-width:0"><p class="room"></p><p class="memberline"></p></div>'
+    + '<button class="pencil" id="rename" aria-label="グループの名前を変える">✏️</button></header>'
     + '<div id="pinned"></div><div id="log"></div><p id="err"></p>'
     + '<div class="stickers" id="stickers" style="display:none"></div>'
     + '<footer><div id="ctxbar"></div>'
     + '<button class="toggle" id="noticeBtn">📣 お知らせとして送る</button>'
     + '<div class="compose">'
     + '<button class="icon" id="stickerBtn" aria-label="スタンプを選ぶ">😊</button>'
+    + '<button class="icon" id="photoBtn" aria-label="写真を送る">📷</button>'
     + '<button class="icon micbtn" id="micBtn" aria-label="声を録音する">🎤</button>'
     + '<textarea id="text" rows="1" placeholder="メッセージを書く"></textarea>'
     + '<button id="send" aria-label="送る" disabled>➤</button>'
     + '</div></footer>';
 
-  document.querySelector(".room").textContent = current;
+  document.querySelector(".room").textContent = roomLabel(current);
   document.getElementById("back").onclick = leaveRoom;
+  const pen = document.getElementById("rename");
+  if (isDM(current)) pen.style.display = "none";
+  else pen.onclick = renameRoom;
+  document.getElementById("photoBtn").onclick = pickPhoto;
 
   const stickerBar = document.getElementById("stickers");
   STICKERS.forEach(s => { const b = el("button", null, s); b.onclick = () => send("sticker", s); stickerBar.appendChild(b); });
@@ -489,8 +528,68 @@ function fail(msg) {
   e.style.display = msg ? "block" : "none";
 }
 
+function renameRoom() {
+  const veil = el("div", "veil"), sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "グループの名前を変える"));
+  sheet.appendChild(el("p", null, "みんなの画面で名前が変わるよ。あいことば（" + current + "）はそのままだから、入り方は変わらない。"));
+  const inp = el("input"); inp.type = "text"; inp.maxLength = 20;
+  inp.value = roomTitles[current] || current;
+  inp.style.marginBottom = "16px";
+  sheet.appendChild(inp);
+  const ok = el("button", "primary", "変える");
+  ok.style.marginBottom = "8px";
+  ok.onclick = async () => {
+    const t = inp.value.trim().slice(0, 20);
+    try {
+      await fb.set(fb.ref(db, `rooms/${current}/title`), t || null);
+      veil.remove();
+    } catch (e) { fail("名前を変えられませんでした。"); }
+  };
+  const cancel = el("button", "cancel", "やめる");
+  cancel.onclick = () => veil.remove();
+  sheet.appendChild(ok); sheet.appendChild(cancel);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
+function dmRoom(otherUid) { return "dm_" + [me.uid, otherUid].sort().join("_"); }
+function isDM(key) { return String(key).indexOf("dm_") === 0; }
+
+const dmNames = load("dmNames", {});
+function roomLabel(key) {
+  if (isDM(key)) return (dmNames[key] || "だれか") + "と2人";
+  return roomTitles[key] || key;
+}
+
+function askDM(uidOther, person) {
+  const veil = el("div", "veil"), sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, person.avatar + " " + person.name));
+  sheet.appendChild(el("p", null, "2人だけの部屋を作るよ。ほかの人は入れないし、中身も見えない。"));
+  const ok = el("button", "primary", person.name + "と2人で話す");
+  ok.style.marginBottom = "8px";
+  ok.onclick = () => {
+    const key = dmRoom(uidOther);
+    dmNames[key] = person.name;
+    store("dmNames", dmNames);
+    if (!rooms.includes(key)) { rooms.push(key); store("rooms", rooms); }
+    veil.remove();
+    openRoom(key);
+  };
+  const cancel = el("button", "cancel", "やめる");
+  cancel.onclick = () => veil.remove();
+  sheet.appendChild(ok); sheet.appendChild(cancel);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
 function listen() {
   const room = current;
+  offTitle = fb.onValue(fb.ref(db, `rooms/${room}/title`), (snap) => {
+    if (current !== room) return;
+    const tv = snap.val(); if (tv) roomTitles[current] = tv; else delete roomTitles[current]; store("roomTitles", roomTitles);
+    const t = document.querySelector(".room");
+    if (t) t.textContent = roomLabel(current);
+  });
   offMsgs = fb.onValue(fb.ref(db, `rooms/${room}/messages`), (snap) => {
     if (current !== room) return;
     const v = snap.val() || {};
@@ -528,14 +627,14 @@ async function trim(room) {
 }
 
 async function send(type, body, extra) {
-  const b = type === "voice" ? body : (body || "").trim();
+  const b = (type === "voice" || type === "photo") ? body : (body || "").trim();
   if (!b || !current) return;
   const room = current;
   const textIn = document.getElementById("text");
   try {
     const msg = Object.assign({
       uid: me.uid, name: me.name, avatar: me.avatar, type,
-      body: type === "voice" ? b : b.slice(0, 1000), t: Date.now()
+      body: (type === "voice" || type === "photo") ? b : b.slice(0, 1000), t: Date.now()
     }, extra || {});
     await fb.push(fb.ref(db, `rooms/${room}/messages`), msg);
     if (type === "text" || type === "notice") {
@@ -548,7 +647,7 @@ async function send(type, body, extra) {
     fail("");
     trim(room);
   } catch (e) {
-    fail(type === "voice" ? "声が長すぎたか、送れませんでした。" : "送れませんでした。もう一度おしてみてね。");
+    fail(type === "voice" ? "声が長すぎたか、送れませんでした。" : (type === "photo" ? "写真を送れませんでした。" : "送れませんでした。もう一度おしてみてね。"));
   }
 }
 
@@ -558,6 +657,105 @@ async function react(msgId, emoji) {
   openPicker = null;
   try { mine === emoji ? await fb.remove(path) : await fb.set(path, emoji); }
   catch (e) { fail("リアクションをつけられませんでした。"); }
+}
+
+/* ========== おしらせ ========== */
+const lastSeen = load("lastSeen", {});
+const unread = {};
+const roomTitles = load("roomTitles", {});
+let watchers = [];
+
+function stopWatch() { watchers.forEach(f => { try { f(); } catch (e) {} }); watchers = []; }
+
+function startWatch() {
+  stopWatch();
+  rooms.forEach(room => {
+    watchers.push(fb.onValue(fb.query(fb.ref(db, `rooms/${room}/messages`), fb.limitToLast(30)), (snap) => {
+      const v = snap.val() || {};
+      const list = Object.values(v).filter(m => m && m.uid !== me.uid);
+      const since = lastSeen[room] || 0;
+      const fresh = list.filter(m => (m.t || 0) > since);
+      const before = unread[room] || 0;
+      unread[room] = fresh.length;
+      if (room !== current && fresh.length > before && before >= 0) {
+        const newest = fresh.sort((a,b) => b.t - a.t)[0];
+        if (newest) toast(room, newest);
+      }
+      if (!current) paintBadges();
+    }));
+
+    watchers.push(fb.onValue(fb.ref(db, `rooms/${room}/title`), (snap) => {
+      const t = snap.val();
+      if (t) roomTitles[room] = t; else delete roomTitles[room];
+      store("roomTitles", roomTitles);
+      if (!current) paintBadges();
+    }));
+  });
+}
+
+let toastTimer = null;
+function toast(room, m) {
+  const old = document.querySelector(".toast");
+  if (old) old.remove();
+  const box = el("div", "toast");
+  box.appendChild(el("div", null, m.avatar || "💬")).style.fontSize = "22px";
+  const tx = el("div", "tx");
+  tx.appendChild(el("p", "t1", m.name + "・" + roomLabel(room)));
+  const body = m.type === "photo" ? "📷 写真" : (m.type === "voice" ? "🎤 声のメッセージ" : (m.type === "sticker" ? m.body : m.body));
+  tx.appendChild(el("p", "t2", body));
+  box.appendChild(tx);
+  box.onclick = () => { box.remove(); openRoom(room); };
+  app.appendChild(box);
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => box.remove(), 4000);
+}
+
+function paintBadges() {
+  document.querySelectorAll(".room-item").forEach(b => {
+    const key = b.dataset.room;
+    if (!key) return;
+    const old = b.querySelector(".badge");
+    if (old) old.remove();
+    const n = unread[key] || 0;
+    if (n > 0) {
+      const bd = el("div", "badge", n > 99 ? "99+" : String(n));
+      b.insertBefore(bd, b.querySelector(".arrow"));
+    }
+  });
+}
+
+/* ========== 写真 ========== */
+const PHOTO_W = 800;
+
+function pickPhoto() {
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.accept = "image/*";
+  inp.onchange = () => {
+    const file = inp.files && inp.files[0];
+    if (file) shrinkAndSend(file);
+  };
+  inp.click();
+}
+
+function shrinkAndSend(file) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const scale = Math.min(1, PHOTO_W / img.width);
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      const data = cv.toDataURL("image/jpeg", 0.75);
+      URL.revokeObjectURL(url);
+      if (data.length > 900000) { fail("その写真は大きすぎました。ほかのを選んでね。"); return; }
+      send("photo", data, { pw: w, ph: h });
+    } catch (e) { fail("写真をうまく読めませんでした。"); }
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); fail("その写真は読めませんでした。"); };
+  img.src = url;
 }
 
 /* ========== ボイスメッセージ ========== */
@@ -735,8 +933,27 @@ function render() {
   const stuck = log.scrollHeight - log.scrollTop - log.clientHeight < 120;
 
   const shown = messages.slice(-MAX_MSGS);
-  const count = Object.keys(members).length || 1;
-  document.querySelector(".sub").textContent = count + "人・" + me.avatar + " " + me.name;
+
+  const ml = document.querySelector(".memberline");
+  if (ml) {
+    ml.innerHTML = "";
+    const ents = Object.entries(members);
+    if (!ents.length) ml.appendChild(document.createTextNode(me.avatar + " " + me.name + "(自分)"));
+    ents.forEach(([u, mm], idx) => {
+      if (idx) ml.appendChild(document.createTextNode("・"));
+      if (u === me.uid) {
+        ml.appendChild(document.createTextNode(mm.avatar + " " + mm.name + "(自分)"));
+      } else if (isDM(current)) {
+        ml.appendChild(document.createTextNode(mm.avatar + " " + mm.name));
+      } else {
+        const b = el("button", null, mm.avatar + " " + mm.name);
+        b.onclick = () => askDM(u, mm);
+        ml.appendChild(b);
+      }
+    });
+  }
+  const rt = document.querySelector(".room");
+  if (rt) rt.textContent = roomLabel(current);
 
   const pin = document.getElementById("pinned");
   pin.innerHTML = "";
@@ -799,7 +1016,17 @@ function render() {
     if (mine) line.style.flexDirection = "row-reverse";
 
     let bub;
-    if (m.type === "voice") {
+    if (m.type === "photo") {
+      bub = el("button");
+      bub.style.padding = "0"; bub.style.background = "none"; bub.style.border = "none";
+      const im = document.createElement("img");
+      im.className = "photo";
+      im.src = m.body;
+      im.alt = "写真";
+      if (m.pw && m.ph) im.style.aspectRatio = m.pw + " / " + m.ph;
+      bub.appendChild(im);
+      bub.onclick = () => { openPicker = openPicker === m.id ? null : m.id; render(); };
+    } else if (m.type === "voice") {
       bub = el("button", "voice");
       const play = el("span", "play", "▶️");
       const wave = el("div", "wave");
@@ -815,7 +1042,7 @@ function render() {
       bub = el("button", "bubble" + (m.type === "sticker" ? " sticker" : ""), m.body);
       bub.onclick = () => { openPicker = openPicker === m.id ? null : m.id; render(); };
     }
-    bub.setAttribute("aria-label", m.type === "voice" ? "声を再生する" : "リアクションをつける");
+    bub.setAttribute("aria-label", m.type === "voice" ? "声を再生する" : (m.type === "photo" ? "写真" : "リアクションをつける"));
     line.appendChild(bub);
     line.appendChild(el("span", "stamp", hhmm(m.t)));
     stack.appendChild(line);
@@ -840,10 +1067,18 @@ function render() {
       stack.appendChild(p);
     }
 
+    if (mine && i === shown.length - 1) {
+      const readers = Object.entries(members)
+        .filter(([u, mm]) => u !== me.uid && mm.seenAt && mm.seenAt >= m.t)
+        .map(([u, mm]) => mm.name);
+      if (readers.length) stack.appendChild(el("p", "seen", "👀 " + readers.join("・") + " が読んだ"));
+    }
+
     row.appendChild(stack);
     log.appendChild(row);
   });
 
+  markSeen();
   if (stuck) log.scrollTop = log.scrollHeight;
 }
 
