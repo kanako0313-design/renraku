@@ -123,6 +123,11 @@
   .photo{max-width:220px;border-radius:16px;display:block;box-shadow:0 1px 3px rgba(36,51,48,.12);background:#e8ebe4}
   .seen{font-size:10px;color:#8b968f;margin:3px 4px 0;line-height:1.5;max-width:200px}
   .row.mine .seen{text-align:right}
+  .tabs{display:flex;gap:0;background:var(--line);margin:0 -16px 0;padding:0 16px}
+  .tabs button{flex:1;padding:12px 0;font-family:var(--round);font-size:14px;color:var(--muted);border:none;background:none;border-bottom:3px solid transparent;cursor:pointer}
+  .tabs button.on{color:var(--teal);border-bottom-color:var(--teal);font-weight:600}
+  #chatBox{display:block}
+  #gameBox{display:none}
   .memberline button{color:inherit;text-decoration:underline;padding:0 2px;font-size:11px}
   .room-item .dot.dm{background:#FDE7EF;color:#C2447A}
   .room-item .badge{background:#D64545;color:#fff;font-size:11px;font-weight:600;min-width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0}
@@ -1771,52 +1776,68 @@ function render() {
   if (stuck) log.scrollTop = log.scrollHeight;
 }
 
-/* ゲームタブ設定 */
-const setupGameTabs = () => {
+// ===== ゲームタブ機能 =====
+const initGameTabs = () => {
   const appEl = document.getElementById("app");
-  if (!appEl) return;
+  if (!appEl || appEl.className !== "vbox") return;
   
-  const tabBar = el("div", "tabs");
-  const tChat = el("button", "on", "💬 グループ");
-  const tGame = el("button", "🎮 ゲーム");
-  tChat.onclick = () => {
-    tChat.classList.add("on"); tGame.classList.remove("on");
-    document.getElementById("chatBox").style.display = "block";
-    document.getElementById("gameBox").style.display = "none";
+  const container = appEl;
+  const oldContent = container.innerHTML;
+  container.innerHTML = "";
+  
+  // タブバーを作る
+  const tabBar = document.createElement("div");
+  tabBar.className = "tabs";
+  tabBar.style.cssText = "display:flex;gap:0;background:var(--line);margin:0 -16px 0;padding:0 16px";
+  
+  const btnChat = document.createElement("button");
+  btnChat.className = "on";
+  btnChat.style.cssText = "flex:1;padding:12px 0;font-family:var(--round);font-size:14px;color:var(--teal);border:none;background:none;border-bottom:3px solid var(--teal);cursor:pointer;font-weight:600";
+  btnChat.textContent = "💬 グループ";
+  
+  const btnGame = document.createElement("button");
+  btnGame.style.cssText = "flex:1;padding:12px 0;font-family:var(--round);font-size:14px;color:var(--muted);border:none;background:none;border-bottom:3px solid transparent;cursor:pointer";
+  btnGame.textContent = "🎮 ゲーム";
+  
+  tabBar.appendChild(btnChat);
+  tabBar.appendChild(btnGame);
+  container.appendChild(tabBar);
+  
+  // グループエリア
+  const chatBox = document.createElement("div");
+  chatBox.id = "chatBox";
+  chatBox.innerHTML = oldContent;
+  container.appendChild(chatBox);
+  
+  // ゲームエリア
+  const gameBox = document.createElement("div");
+  gameBox.id = "gameBox";
+  gameBox.style.cssText = "display:none;padding:16px;overflow:auto;flex:1";
+  const frame = document.createElement("iframe");
+  frame.id = "gameFrame";
+  frame.src = "./game.html";
+  frame.style.cssText = "width:100%;height:70vh;border:none;border-radius:12px;background:#fff;display:block";
+  gameBox.appendChild(frame);
+  container.appendChild(gameBox);
+  
+  // タブ切り替え
+  btnChat.onclick = () => {
+    btnChat.style.cssText = "flex:1;padding:12px 0;font-family:var(--round);font-size:14px;color:var(--teal);border:none;background:none;border-bottom:3px solid var(--teal);cursor:pointer;font-weight:600";
+    btnGame.style.cssText = "flex:1;padding:12px 0;font-family:var(--round);font-size:14px;color:var(--muted);border:none;background:none;border-bottom:3px solid transparent;cursor:pointer";
+    chatBox.style.display = "block";
+    gameBox.style.display = "none";
   };
-  tGame.onclick = () => {
-    tChat.classList.remove("on"); tGame.classList.add("on");
-    document.getElementById("chatBox").style.display = "none";
-    document.getElementById("gameBox").style.display = "block";
+  
+  btnGame.onclick = () => {
+    btnChat.style.cssText = "flex:1;padding:12px 0;font-family:var(--round);font-size:14px;color:var(--muted);border:none;background:none;border-bottom:3px solid transparent;cursor:pointer";
+    btnGame.style.cssText = "flex:1;padding:12px 0;font-family:var(--round);font-size:14px;color:var(--teal);border:none;background:none;border-bottom:3px solid var(--teal);cursor:pointer;font-weight:600";
+    chatBox.style.display = "none";
+    gameBox.style.display = "block";
   };
-  tabBar.appendChild(tChat);
-  tabBar.appendChild(tGame);
-  
-  const oldHTML = appEl.innerHTML;
-  appEl.innerHTML = "";
-  appEl.appendChild(tabBar);
-  
-  const cBox = el("div");
-  cBox.id = "chatBox";
-  cBox.innerHTML = oldHTML;
-  
-  const gBox = el("div");
-  gBox.id = "gameBox";
-  gBox.style.cssText = "display:none;padding:16px;overflow:auto;flex:1";
-  const frm = document.createElement("iframe");
-  frm.id = "gameFrame";
-  frm.src = "./game.html";
-  frm.style.cssText = "width:100%;height:70vh;border:none;border-radius:12px;background:#fff";
-  gBox.appendChild(frm);
-  
-  appEl.appendChild(cBox);
-  appEl.appendChild(gBox);
 };
 
-setTimeout(setupGameTabs, 100);
-
 try {
-  (me && me.name) ? showHome() : showSetup();
+  (me && me.name) ? (() => { showHome(); setTimeout(initGameTabs, 100); })() : showSetup();
 } catch (e) {
   app.innerHTML = '<div class="center"><div class="card"><h1>ごめん、うまく開けなかった</h1><p class="note">' + String(e.message) + '</p></div></div>';
 }
