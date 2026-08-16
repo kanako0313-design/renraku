@@ -567,6 +567,8 @@ function showSetup() {
   gameBtn.style.marginBottom = "8px";
   gameBtn.onclick = () => window.open("./game.html", "_blank");
   card.appendChild(gameBtn);
+  
+  card.appendChild(el("hr", "sep"));
 
   const fbBtn = el("button", "cancel", "フィードバックを送信する");
     fbBtn.style.marginBottom = "8px";
