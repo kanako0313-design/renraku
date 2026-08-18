@@ -1,75 +1,183 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>ビル経営ゲーム - 海吏作</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>イロヌリバトル！DX3</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{background:#1A3A5C;font-family:'Hiragino Sans','Meiryo',sans-serif;overflow:hidden;touch-action:manipulation;}
-.screen{display:none;position:fixed;inset:0;overflow-y:auto;padding:14px;background:#1A3A5C;}
-.screen.active{display:flex;flex-direction:column;align-items:center;}
-/* HOME */
-#sHome{background:linear-gradient(160deg,#0A1E38,#1A3A5C,#0A2A18);}
-.logo{font-size:52px;margin:10px 0 4px;}
-.ti{font-size:22px;font-weight:900;color:#EF9F27;margin-bottom:2px;text-align:center;}
-.sub{font-size:10px;color:#5FAABB;margin-bottom:14px;text-align:center;}
-.slots{display:flex;gap:8px;margin-bottom:12px;width:100%;max-width:380px;}
-.slotbtn{flex:1;padding:10px 4px;border-radius:10px;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:border-color .15s;}
-.slotbtn.active{border-color:#EF9F27;background:rgba(239,159,39,.1);}
-.slot-info{font-size:10px;color:#5FAABB;margin-bottom:12px;text-align:center;min-height:16px;}
-.home-btns{display:flex;flex-direction:column;gap:8px;width:100%;max-width:380px;}
-.hbtn{padding:13px;border-radius:12px;border:none;font-size:14px;font-weight:800;cursor:pointer;text-align:center;}
-.hbtn-main{background:linear-gradient(135deg,#EF9F27,#CC7700);color:white;}
-.hbtn-sub{background:rgba(255,255,255,.08);color:#ccc;border:1px solid rgba(255,255,255,.12);}
-.hbtn-danger{background:rgba(180,50,50,.12);color:#FF8888;border:1px solid rgba(180,50,50,.2);}
-.save-badge{font-size:10px;color:#5FDDB8;margin-top:8px;}
-/* GAME */
-#sGame{background:#0A1628;padding:0;align-items:stretch;}
-.game-top{padding:8px 10px 4px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
-.stat{font-size:10px;color:rgba(255,255,255,.5);text-align:center;}
-.stat span{display:block;font-size:15px;font-weight:900;color:#fff;}
-#bc{display:block;width:100%;cursor:pointer;flex-shrink:0;}
-.game-bottom{flex:1;overflow-y:auto;padding:10px;}
-/* 天気バー */
-.wbar{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:7px;margin-bottom:8px;font-size:11px;font-weight:600;}
-.wb-sunny{background:rgba(255,220,50,.1);border:1px solid rgba(255,220,50,.3);color:#B8A030;}
-.wb-cloudy{background:rgba(150,160,170,.1);border:1px solid rgba(150,160,170,.3);color:#8899AA;}
-.wb-rainy{background:rgba(60,100,200,.1);border:1px solid rgba(60,100,200,.3);color:#4488CC;}
-.wb-snowy{background:rgba(180,210,255,.1);border:1px solid rgba(180,210,255,.3);color:#5588AA;}
-.stag{font-size:9px;padding:2px 7px;border-radius:8px;background:rgba(255,255,255,.1);margin-left:auto;}
-/* セクション */
-.slbl{font-size:9px;font-weight:700;color:#5FAABB;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 4px;padding-left:2px;}
-.sec{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;margin-bottom:8px;}
-/* ローン */
-.loan-sec{background:rgba(180,50,50,.05);border:1px solid rgba(180,50,50,.15);border-radius:10px;padding:10px;margin-bottom:8px;}
-.loan-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
-.lbtn{font-size:10px;padding:6px 10px;border-radius:7px;border:1px solid rgba(180,50,50,.3);background:rgba(180,50,50,.08);color:#FF8888;cursor:pointer;}
-/* モーダル */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;padding:20px;}
-.modal-bg.open{display:flex;}
-.modal{background:#FAFAF5;border-radius:16px;padding:20px;width:100%;max-width:340px;max-height:80vh;overflow-y:auto;}
-.modal h3{font-size:15px;font-weight:800;margin-bottom:10px;color:#1A1A18;}
-.mbtn{display:block;width:100%;padding:11px;border-radius:10px;border:1px solid #DDDDD8;background:#fff;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:6px;text-align:center;}
-.mbtn:disabled{opacity:.4;cursor:not-allowed;}
-.tbtn{display:block;width:100%;padding:10px;border-radius:10px;border:1px solid #E0DDD5;background:#F5F4EF;font-size:11px;cursor:pointer;margin-bottom:5px;text-align:left;}
-/* フラッシュ */
-.flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.85);color:#fff;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;display:none;z-index:200;pointer-events:none;white-space:nowrap;}
-/* セーブ */
-.save-txt{font-size:9px;color:rgba(255,255,255,.4);text-align:right;margin-top:4px;}
-/* イベント */
-.ev-bar{padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;margin-bottom:6px;display:none;}
-.ev-good{background:rgba(0,200,100,.12);border:1px solid rgba(0,200,100,.3);color:#00C864;}
-.ev-bad{background:rgba(255,60,60,.12);border:1px solid rgba(255,60,60,.3);color:#FF4444;}
-/* タイマー */
-.timers{display:flex;gap:8px;margin-bottom:8px;font-size:10px;color:rgba(255,255,255,.5);}
-.timer-item{background:rgba(255,255,255,.05);border-radius:6px;padding:3px 7px;}
-/* 屋上 */
-.roof-sec{background:rgba(100,180,220,.06);border:1px solid rgba(100,180,220,.2);border-radius:10px;padding:10px;margin-bottom:8px;}
-.roof-hd{font-size:11px;font-weight:700;color:#64B4DC;margin-bottom:6px;}
-/* 戦闘 */
-.battle-box{background:rgba(255,100,0,.08);border:1px solid rgba(255,100,0,.2);border-radius:8px;padding:8px;font-size:11px;color:#FFA040;display:none;margin-bottom:6px;}
+  :root{
+    --pink:#ff3d8a;
+    --mint:#21e6c1;
+    --gold:#ffcf3d;
+    --bg:#171331;
+    --ui:#ffffff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
+    font-family:"Hiragino Maru Gothic ProN","BIZ UDGothic","Yu Gothic",system-ui,sans-serif;
+    touch-action:none;user-select:none;-webkit-user-select:none;}
+  #game{position:fixed;inset:0;display:block;}
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;top:0;left:0;right:0;padding:8px 12px;pointer-events:none;
+    display:flex;flex-direction:column;gap:5px;z-index:5;}
+  #hudTop{display:flex;align-items:center;gap:10px;}
+  #timer{font-size:30px;font-weight:800;color:var(--ui);
+    text-shadow:0 2px 0 rgba(0,0,0,.4);letter-spacing:2px;flex:1;text-align:center;}
+  #minimap{border-radius:8px;border:2px solid rgba(255,255,255,.5);
+    box-shadow:0 3px 8px rgba(0,0,0,.4);background:#241f4a;}
+  #shareBar{height:14px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.15);
+    display:flex;box-shadow:inset 0 2px 4px rgba(0,0,0,.3);}
+  #sharePink{background:var(--pink);width:50%;transition:width .4s;}
+  #shareMint{background:var(--mint);flex:1;transition:width .4s;}
+  #zoneTxt{text-align:center;font-size:13px;font-weight:800;color:#fff;
+    text-shadow:0 2px 0 rgba(0,0,0,.4);}
+  #zoneTxt .p{color:var(--pink);} #zoneTxt .m{color:var(--mint);}
+  #bossBarWrap{height:16px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.15);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.3);}
+  #bossBarFill{height:100%;width:100%;background:linear-gradient(90deg,#a855f7,#ef4444);transition:width .3s;}
+  #bossLabel{text-align:center;font-size:12px;font-weight:800;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.4);}
+  /* ---------- 中央メッセージ ---------- */
+  #deadMsg,#rushBanner{position:fixed;top:36%;left:0;right:0;text-align:center;z-index:7;pointer-events:none;
+    font-size:min(9vw,44px);font-weight:900;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.5);
+    transform:rotate(-3deg);}
+  #rushBanner{color:var(--gold);animation:rushpop .5s ease infinite alternate;}
+  @keyframes rushpop{from{transform:rotate(-3deg) scale(1);}to{transform:rotate(-3deg) scale(1.12);}}
+  /* ---------- インクゲージ・バフ ---------- */
+  #inkWrap{position:fixed;right:20px;bottom:142px;width:96px;height:12px;z-index:6;
+    background:rgba(255,255,255,.2);border-radius:99px;overflow:hidden;
+    box-shadow:inset 0 2px 3px rgba(0,0,0,.35);}
+  #inkFill{height:100%;width:100%;background:linear-gradient(90deg,#ff7ab1,var(--pink));border-radius:99px;}
+  #inkWrap.empty #inkFill{background:#777;}
+  #inkLabel{position:fixed;right:20px;bottom:158px;width:96px;text-align:center;z-index:6;
+    color:rgba(255,255,255,.8);font-size:10px;font-weight:700;pointer-events:none;}
+  #buffTxt{position:fixed;right:20px;bottom:176px;width:130px;text-align:right;z-index:6;
+    color:#fff;font-size:13px;font-weight:800;pointer-events:none;text-shadow:0 2px 0 rgba(0,0,0,.5);}
+  /* ---------- ボタン ---------- */
+  #fireBtn{position:fixed;right:20px;bottom:34px;width:96px;height:96px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, #ff7ab1, var(--pink));
+    border:4px solid rgba(255,255,255,.85);color:#fff;font-weight:800;
+    box-shadow:0 6px 0 rgba(0,0,0,.35);z-index:6;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;font-family:inherit;}
+  #fireBtn .em{font-size:30px;line-height:1;}
+  #fireBtn .nm{font-size:10px;line-height:1;}
+  #fireBtn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.35);}
+  #fireBtn.empty{filter:grayscale(.9);opacity:.7;}
+  #spBtn{position:fixed;right:128px;bottom:44px;width:72px;height:72px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, #ffe58a, var(--gold));
+    border:4px solid rgba(255,255,255,.85);color:#5b4300;font-weight:800;
+    box-shadow:0 6px 0 rgba(0,0,0,.35);z-index:6;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;font-family:inherit;font-size:10px;}
+  #spBtn .em{font-size:24px;line-height:1;}
+  #spBtn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.35);}
+  #spBtn.charging{filter:grayscale(.85);opacity:.6;}
+  #spBtn.ready{animation:sppulse .6s ease infinite alternate;}
+  @keyframes sppulse{from{box-shadow:0 6px 0 rgba(0,0,0,.35),0 0 0 0 rgba(255,207,61,.7);}
+    to{box-shadow:0 6px 0 rgba(0,0,0,.35),0 0 0 12px rgba(255,207,61,0);}}
+  /* ---------- ジョイスティック ---------- */
+  .stick{position:fixed;border-radius:50%;pointer-events:none;z-index:6;display:none;}
+  #stickBase{width:110px;height:110px;border:3px dashed rgba(255,255,255,.5);}
+  #stickKnob{width:52px;height:52px;background:rgba(255,255,255,.85);box-shadow:0 3px 8px rgba(0,0,0,.4);}
+  /* ---------- オーバーレイ ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(18,14,42,.94);z-index:10;
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    gap:14px;padding:24px 20px 40px;text-align:center;overflow-y:auto;}
+  .title{font-size:min(10vw,48px);font-weight:900;color:#fff;line-height:1.15;transform:rotate(-4deg);}
+  .title .p{color:var(--pink);} .title .m{color:var(--mint);}
+  .sub{color:rgba(255,255,255,.85);font-size:13px;line-height:1.7;}
+  .secLabel{font-weight:800;color:#fff;font-size:15px;}
+  .btn{pointer-events:auto;font-family:inherit;font-size:21px;font-weight:800;color:#171331;
+    background:#fff;border:none;border-radius:99px;padding:14px 44px;
+    box-shadow:0 6px 0 rgba(0,0,0,.4);}
+  .btn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.4);}
+  #modeGrid{display:grid;grid-template-columns:1fr;gap:8px;width:100%;max-width:420px;}
+  .mode{pointer-events:auto;font-family:inherit;display:flex;align-items:center;gap:10px;
+    background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:14px;
+    padding:9px 12px;color:#fff;font-weight:800;font-size:14px;text-align:left;}
+  .mode .me{font-size:24px;}
+  .mode small{display:block;font-weight:400;font-size:11px;opacity:.75;}
+  .mode.sel{background:#5b4fd6;border-color:#fff;box-shadow:0 0 0 3px rgba(91,79,214,.4);}
+  #weaponGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:420px;}
+  .wpn{pointer-events:auto;font-family:inherit;display:flex;align-items:center;gap:8px;
+    background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:14px;
+    padding:8px 10px;color:#fff;font-weight:700;font-size:13px;text-align:left;}
+  .wpn .we{font-size:22px;}
+  .wpn.sel{background:var(--pink);border-color:#fff;box-shadow:0 0 0 3px rgba(255,61,138,.4);}
+  .wpn small{display:block;font-weight:400;font-size:10px;opacity:.75;}
+  #resultTxt{font-size:min(12vw,58px);font-weight:900;transform:rotate(-3deg);margin-top:8vh;}
+  .win{color:var(--pink);} .lose{color:var(--mint);} .draw{color:#fff;}
+  .pct{font-size:18px;font-weight:800;color:#fff;}
+  .pct span.p{color:var(--pink);} .pct span.m{color:var(--mint);}
+  #statsTxt{font-size:15px;font-weight:800;color:#fff;line-height:2;
+    background:rgba(255,255,255,.08);border-radius:14px;padding:12px 22px;}
+  /* ---------- ゲーム中ランキング ---------- */
+  #liveRank{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;pointer-events:none;}
+  .lrow{background:rgba(0,0,0,.35);border-radius:99px;padding:2px 8px;
+    color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;gap:4px;}
+  .lrow.me{background:rgba(255,225,77,.35);border:1px solid rgba(255,225,77,.8);}
+  .lrow .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  /* ---------- オンラインランキング ---------- */
+  #rankBox{width:100%;max-width:420px;background:rgba(255,255,255,.08);
+    border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;}
+  #nameRow{display:flex;gap:8px;}
+  #nameInput{pointer-events:auto;flex:1;font-family:inherit;font-size:15px;font-weight:700;
+    border:none;border-radius:10px;padding:10px 12px;background:rgba(255,255,255,.92);color:#171331;}
+  .smallBtn{pointer-events:auto;font-family:inherit;font-size:14px;font-weight:800;color:#171331;
+    background:var(--gold);border:none;border-radius:10px;padding:10px 16px;
+    box-shadow:0 3px 0 rgba(0,0,0,.4);}
+  .smallBtn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.4);}
+  .smallBtn:disabled{filter:grayscale(1);opacity:.6;}
+  #rankList{color:#fff;font-size:13px;font-weight:700;line-height:1.9;text-align:left;}
+  #rankList .rme{color:var(--gold);}
+  #rankNote{color:rgba(255,255,255,.55);font-size:10px;}
+  .hidden{display:none !important;}
 </style>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCzpAJAmqorxAzplZca57Q9wsO-z6jJ4TY",
+  databaseURL: "https://rakuraku-1e398-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rakuraku-1e398"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// スコアをFirebaseに送信
+async function saveScore(playerName, score) {
+  try {
+    const userId = playerName.replace(/[^a-zA-Z0-9]/g, '_');
+    const ref = db.ref('scores/' + userId);
+    await ref.update({
+      name: playerName,
+      score: score,
+      timestamp: Date.now()
+    });
+    console.log('スコア保存:', playerName, score);
+  } catch (e) {
+    console.error('保存失敗:', e);
+  }
+}
+
+// ランキングを取得
+async function getRanking() {
+  try {
+    const snapshot = await db.ref('scores').orderByChild('score').limitToLast(10).once('value');
+    const data = snapshot.val();
+    if (!data) return [];
+    const ranking = Object.entries(data).map(([id, d]) => ({
+      name: d.name,
+      score: d.score
+    })).sort((a, b) => b.score - a.score);
+    return ranking;
+  } catch (e) {
+    console.error('ランキング取得失敗:', e);
+    return [];
+  }
+}
+</script>
+
 </head>
 <body>
 <div style="position:fixed;top:10px;left:10px;z-index:9999">
@@ -77,1073 +185,1276 @@ body{background:#1A3A5C;font-family:'Hiragino Sans','Meiryo',sans-serif;overflow
 </div>
 
 
+<canvas id="game"></canvas>
 
-<!-- ホーム -->
-<div class="screen active" id="sHome">
-  <div class="logo">🏢</div>
-  <div class="ti">ビル経営ゲーム</div>
-  <div class="sub">海吏 作 / テナントを増やして最強のビルを作ろう！</div>
-  <div class="slots">
-    <button class="slotbtn active" id="sb1" onclick="pickSlot(1)">SL1</button>
-    <button class="slotbtn" id="sb2" onclick="pickSlot(2)">SL2</button>
-    <button class="slotbtn" id="sb3" onclick="pickSlot(3)">SL3</button>
+<div id="hud" class="hidden">
+  <div id="hudTop">
+    <div style="width:80px"></div>
+    <div id="timer">180</div>
+    <canvas id="minimap" width="80" height="80"></canvas>
   </div>
-  <div class="slot-info" id="slotInfo">スロットを選んでスタート！</div>
-  <div class="home-btns">
-    <button class="hbtn hbtn-main" onclick="goGame()">▶ ゲームスタート</button>
-    <button class="hbtn hbtn-sub" onclick="goHow()">📖 あそびかた</button>
-    <button class="hbtn hbtn-danger" onclick="openReset()">🗑 セーブデータを消す</button>
-  </div>
-  <div class="save-badge" id="saveBadge"></div>
+  <div id="shareBar"><div id="sharePink"></div><div id="shareMint"></div></div>
+  <div id="zoneTxt" class="hidden"></div>
+  <div id="bossLabel" class="hidden">👹 ボスのたいりょく</div>
+  <div id="bossBarWrap" class="hidden"><div id="bossBarFill"></div></div>
+  <div id="liveRank"></div>
 </div>
 
-<!-- ゲーム -->
-<div class="screen" id="sGame">
-  <div class="game-top">
-    <div class="stat" id="sMoney"><span id="vMoney">100</span>円</div>
-    <div class="stat" id="sInc" onclick="_admTap('ic')"><span id="vInc">0</span>円/秒</div>
-    <div class="stat" id="sRnk" onclick="_admTap('rk')"><span id="vRnk">★</span></div>
-    <div class="stat"><span id="vLv">Lv.1</span></div>
-    <button onclick="goHome()" style="background:rgba(255,255,255,.08);border:none;color:#aaa;padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer;">🏠</button>
-  </div>
-  <canvas id="bc"></canvas>
-  <div class="game-bottom">
-    <div class="wbar wb-sunny" id="wbar">☀️ 晴れ <span class="stag" id="stag">🌸 春</span></div>
-    <div class="ev-bar" id="evBar"></div>
-    <div class="battle-box" id="battleBox"></div>
-    <div class="timers" id="timers"></div>
-    <div class="save-txt" id="saveTxt"></div>
+<div id="deadMsg" class="hidden"></div>
+<div id="rushBanner" class="hidden">🔥ラッシュタイム！！🔥</div>
+<div id="buffTxt"></div>
+<div id="inkLabel" class="hidden">インク</div>
+<div id="inkWrap" class="hidden"><div id="inkFill"></div></div>
+<button id="spBtn" class="hidden charging"><span class="em">💥</span><span id="spPct">0%</span></button>
+<button id="fireBtn" class="hidden"><span class="em">🔫</span><span class="nm">はっしゃ!</span></button>
+<div id="stickBase" class="stick"></div>
+<div id="stickKnob" class="stick"></div>
 
-    <div class="slbl">フロア管理</div>
-    <div class="sec" id="flSec"></div>
-
-    <div class="slbl">屋上スペース</div>
-    <div class="roof-sec" id="roofSec"></div>
-
-    <div class="slbl">地下駐車場</div>
-    <div class="sec" id="pkSec"></div>
-
-    <div class="slbl">ローン</div>
-    <div class="loan-sec" id="loanSec"></div>
-
-    <div class="slbl">ミッション</div>
-    <div class="sec" id="misSec"></div>
-  </div>
+<div id="startOverlay" class="overlay">
+  <div class="title">イロ<span class="p">ヌ</span>リ<br>バ<span class="m">ト</span>ル！<span style="font-size:.5em">DX3</span></div>
+  <div class="sub">💧うつとインクが減る→自分の色の上で回復！<br>💀てきのインクに当たるとやられて基地にもどる<br>🎨ぬるとスペシャルゲージがたまる→💥ボタンでドカン！</div>
+  <div class="secLabel">🕹️ モードをえらぶ</div>
+  <div id="modeGrid"></div>
+  <div class="secLabel">🎮 ぶきをえらぶ</div>
+  <div id="weaponGrid"></div>
+  <button class="btn" id="startBtn">スタート！</button>
 </div>
 
-<!-- あそびかた -->
-<div class="screen" id="sHow">
-  <div style="width:100%;max-width:380px;">
-    <button onclick="goHome()" style="background:rgba(255,255,255,.1);border:none;color:#aaa;padding:8px 14px;border-radius:8px;margin-bottom:12px;cursor:pointer;">← 戻る</button>
-    <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:16px;color:#ccc;font-size:12px;line-height:2;">
-      🏢 フロアにテナントを入れると収入が増えるよ<br>
-      📈 収入が増えるとレベルが上がって新しいテナントが解放される<br>
-      🔥 火事が起きたら消防士をタップして誘導しよう<br>
-      ⚔️ CPU対決に勝つとお金が増える<br>
-      🏙️ 屋上を開放すると特別な施設が置けるよ<br>
-      💳 ローンでお金を借りられるけど利子がかかる<br>
-      ☀️ 天気によって収入が変わるよ<br>
-      💾 3つのセーブスロットで別々に保存できる
+<div id="endOverlay" class="overlay" style="display:none;">
+  <div id="resultTxt"></div>
+  <div class="pct" id="pctTxt"></div>
+  <div id="statsTxt"></div>
+  <div id="rankBox">
+    <div class="secLabel">🌏 オンラインランキング</div>
+    <div id="nameRow">
+      <input id="nameInput" maxlength="10" placeholder="なまえ（10文字まで）">
+      <button id="saveScoreBtn" class="smallBtn">とうろく</button>
     </div>
+    <div id="rankList">よみこみ中…</div>
+    <div id="rankNote">※とうろくした名前とスコアは、このゲームで遊ぶみんなに見えるよ</div>
   </div>
+  <button class="btn" id="retryBtn">もう一回！</button>
 </div>
-
-<!-- フロアテナント選択 -->
-<div class="modal-bg" id="mdFloor">
-  <div class="modal">
-    <h3 id="mdFloorTitle">テナントを選ぼう</h3>
-    <div id="mdFloorList"></div>
-    <button class="mbtn" onclick="closeMd('mdFloor')">キャンセル</button>
-  </div>
-</div>
-
-<!-- 屋上テナント選択 -->
-<div class="modal-bg" id="mdRoof">
-  <div class="modal">
-    <h3>屋上に何を置く？</h3>
-    <div id="mdRoofList"></div>
-    <button class="mbtn" onclick="closeMd('mdRoof')">キャンセル</button>
-  </div>
-</div>
-
-<!-- リセット選択 -->
-<div class="modal-bg" id="mdReset">
-  <div class="modal">
-    <h3>🗑 どれを消しますか？</h3>
-    <p style="font-size:11px;color:#888;margin-bottom:12px;">消したデータは元に戻せないよ！</p>
-    <button class="mbtn" id="rst1" onclick="doReset(1)">1️⃣ SL1 を消す</button>
-    <button class="mbtn" id="rst2" onclick="doReset(2)">2️⃣ SL2 を消す</button>
-    <button class="mbtn" id="rst3" onclick="doReset(3)">3️⃣ SL3 を消す</button>
-    <button class="mbtn" style="background:#c00;color:#fff;" onclick="doReset(0)">⚠️ 全部消す</button>
-    <button class="mbtn" onclick="closeMd('mdReset')">キャンセル</button>
-  </div>
-</div>
-
-<!-- 管理者パネル -->
-<div class="modal-bg" id="mdAdmin">
-  <div class="modal">
-    <h3>🔧 管理者パネル（海吏専用）</h3>
-    <button class="mbtn" style="background:#1D9E75;color:#fff;" onclick="adm('m1k')">💰 +1,000円</button>
-    <button class="mbtn" style="background:#0F6E56;color:#fff;" onclick="adm('m10k')">💰 +10,000円</button>
-    <button class="mbtn" style="background:#993C1D;color:#fff;" onclick="adm('fire')">🔥 火事を起こす</button>
-    <button class="mbtn" style="background:#C8920A;color:#fff;" onclick="adm('celeb')">⭐ 有名人を呼ぶ</button>
-    <button class="mbtn" style="background:#534AB7;color:#fff;" onclick="adm('allmis')">🏅 全ミッション達成</button>
-    <button class="mbtn" style="background:#185FA5;color:#fff;" onclick="adm('lv5')">💎 全テナント解放</button>
-    <button class="mbtn" onclick="closeMd('mdAdmin')">閉じる</button>
-  </div>
-</div>
-
-<div class="flash" id="flash"></div>
 
 <script>
-// ===== ユーティリティ =====
-function el(id){ return document.getElementById(id); }
-function showFlash(msg, col){
-  var f = el('flash');
-  f.textContent = msg;
-  f.style.background = col ? col : 'rgba(0,0,0,.85)';
-  f.style.display = 'block';
-  clearTimeout(showFlash._t);
-  showFlash._t = setTimeout(function(){ f.style.display = 'none'; }, 1600);
-}
-function openMd(id){ el(id).classList.add('open'); }
-function closeMd(id){ el(id).classList.remove('open'); }
-function showScreen(id){
-  var all = document.querySelectorAll('.screen');
-  for(var i=0;i<all.length;i++) all[i].classList.remove('active');
-  el(id).classList.add('active');
-}
-
-// ===== localStorage安全ラッパー =====
-var LS = {
-  get: function(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
-  set: function(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
-  del: function(k){ try{ localStorage.removeItem(k); }catch(e){} }
-};
-
-// ===== セーブ =====
-var SAVE_KEY = 'bldgame_v3';
-var currentSlot = 1;
-function slotKey(n){ return SAVE_KEY + '_s' + (n || currentSlot); }
-
-function saveGame(){
-  try{
-    var d = {
-      money: money, floors: floors, parks: parks,
-      doneMis: Array.from(doneMis), battleWins: battleWins,
-      fireCD: fireCD, cpuCD: cpuCD, prevLv: prevLv,
-      rooftop: rooftop, debt: debt, debtRate: debtRate, season: season,
-      savedAt: Date.now()
-    };
-    LS.set(slotKey(currentSlot), JSON.stringify(d));
-    el('saveTxt').textContent = '💾 SL'+currentSlot+' ' + new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) + 'に保存';
-  }catch(e){}
-}
-
-function loadGame(){
-  try{
-    var raw = LS.get(slotKey(currentSlot));
-    if(!raw) return false;
-    var d = JSON.parse(raw);
-    money = d.money || 100;
-    floors = d.floors || [{slots:[null]},{slots:[null]},{slots:[null]}];
-    parks = d.parks || 1;
-    doneMis = new Set(d.doneMis || []);
-    battleWins = d.battleWins || 0;
-    fireCD = d.fireCD || randFireCD();
-    cpuCD = d.cpuCD || 300;
-    prevLv = d.prevLv || 1;
-    if(d.rooftop) rooftop = d.rooftop;
-    debt = d.debt || 0;
-    debtRate = d.debtRate || 0;
-    season = d.season || 0;
-    return true;
-  }catch(e){ return false; }
-}
-
-function pickSlot(n){
-  currentSlot = n;
-  [1,2,3].forEach(function(i){
-    el('sb'+i).classList.toggle('active', i===n);
-  });
-  try{
-    var raw = LS.get(slotKey(n));
-    var info = '';
-    if(raw){
-      var d = JSON.parse(raw);
-      var t = new Date(d.savedAt).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
-      var m = d.money ? Math.floor(d.money).toLocaleString()+'円' : '';
-      var fl = d.floors ? d.floors.length+'F' : '';
-      info = 'SL'+n+'：'+t+' ／ '+m+' ／ '+fl;
-    }else{
-      info = 'SL'+n+'：新規データ';
-    }
-    el('slotInfo').textContent = info;
-  }catch(e){ el('slotInfo').textContent = 'SL'+n; }
-}
-
-function updateBadge(){
-  try{
-    var any = false;
-    [1,2,3].forEach(function(n){
-      var raw = LS.get(slotKey(n));
-      var btn = el('sb'+n);
-      if(raw){
-        try{
-          var d = JSON.parse(raw);
-          var t = new Date(d.savedAt).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
-          btn.innerHTML = 'SL'+n+'<br><span style="font-size:8px;color:#EF9F27;">'+t+'</span>';
-          any = true;
-        }catch(e){ btn.innerHTML = 'SL'+n; }
-      }else{
-        btn.innerHTML = 'SL'+n+'<br><span style="font-size:8px;color:#555;">なし</span>';
-      }
-    });
-    el('saveBadge').textContent = any ? '💾 セーブデータあり' : '💾 セーブデータなし';
-  }catch(e){}
-}
-
-function openReset(){
-  try{
-    [1,2,3].forEach(function(n){
-      var raw = LS.get(slotKey(n));
-      var btn = el('rst'+n);
-      if(raw){
-        try{
-          var d = JSON.parse(raw);
-          var t = new Date(d.savedAt).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
-          btn.textContent = (n===1?'1️⃣':'2️⃣'===n?'2️⃣':'3️⃣') + ' SL'+n+' を消す（'+t+'）';
-          btn.style.opacity = '1';
-        }catch(e){}
-      }else{
-        btn.textContent = (n===1?'1️⃣':n===2?'2️⃣':'3️⃣') + ' SL'+n+'（データなし）';
-        btn.style.opacity = '0.4';
-      }
-    });
-  }catch(e){}
-  openMd('mdReset');
-}
-
-function doReset(n){
-  if(!confirm((n===0?'全部':'SL'+n) + 'のデータを消しますか？')) return;
-  if(n===0){ [1,2,3].forEach(function(s){ LS.del(slotKey(s)); }); }
-  else{ LS.del(slotKey(n)); }
-  closeMd('mdReset');
-  updateBadge();
-  pickSlot(currentSlot);
-  showFlash('🗑 消したよ！', '#A32D2D');
-}
-
-// ===== データ定義 =====
-var CATS = {
-  food:{l:'食べ物',c:'#993C1D'},
-  shop:{l:'買い物',c:'#0F6E56'},
-  fun:{l:'エンタメ',c:'#185FA5'},
-  work:{l:'オフィス',c:'#534AB7'},
-  big:{l:'大型',c:'#BA7517'}
-};
-var TN = {
-  conbini:{n:'コンビニ',p:50,i:5,cat:'food',lv:1},
-  super2:{n:'スーパー',p:150,i:20,cat:'shop',lv:1},
-  flower:{n:'花屋',p:70,i:9,cat:'shop',lv:1},
-  cafe:{n:'カフェ',p:80,i:10,cat:'food',lv:1},
-  pharm:{n:'薬局',p:100,i:13,cat:'work',lv:1},
-  icecream:{n:'アイス屋',p:60,i:8,cat:'food',lv:1},
-  ramen:{n:'ラーメン屋',p:90,i:12,cat:'food',lv:2},
-  book:{n:'本屋',p:120,i:15,cat:'shop',lv:2},
-  pet:{n:'ペットショップ',p:180,i:25,cat:'shop',lv:2},
-  elec:{n:'電気屋',p:220,i:35,cat:'shop',lv:2},
-  company:{n:'会社',p:200,i:30,cat:'work',lv:2},
-  arcade:{n:'ゲームセンター',p:250,i:40,cat:'fun',lv:3},
-  kara:{n:'カラオケ',p:200,i:30,cat:'fun',lv:3},
-  manga:{n:'漫画喫茶',p:160,i:22,cat:'fun',lv:3},
-  gym:{n:'スポーツジム',p:280,i:45,cat:'fun',lv:3},
-  hosp:{n:'病院',p:350,i:60,cat:'work',lv:3},
-  cinema:{n:'映画館',p:400,i:70,cat:'fun',lv:4},
-  bank:{n:'銀行',p:450,i:80,cat:'work',lv:4},
-  hotel:{n:'ホテル',p:500,i:90,cat:'big',lv:4},
-  restaurant:{n:'レストラン',p:300,i:50,cat:'food',lv:4},
-  aqua:{n:'水族館',p:600,i:110,cat:'big',lv:5}
-};
-var LV_REQ = [0,0,50,150,300,500];
-var EVENTS = [
-  {id:'celeb',n:'⭐ 有名人来店！',d:'10秒間、収入が2倍！',t:'good',dur:10,m:2},
-  {id:'rush',n:'🏃 お客様殺到！',d:'8秒間、収入が3倍！',t:'good',dur:8,m:3},
-  {id:'lottery',n:'🎰 宝くじ当選！',d:'ボーナス300円！',t:'good',dur:3,bonus:300},
-  {id:'sale',n:'🏷️ 特別セール！',d:'次のテナントが半額！',t:'good',dur:3,isSale:true},
-  {id:'power',n:'⚡ 停電！',d:'8秒間、収入がゼロ！',t:'bad',dur:8,m:0},
-  {id:'typhoon',n:'🌀 台風警報！',d:'12秒間、収入が半分！',t:'bad',dur:12,m:0.5}
-];
-var MISSIONS = [
-  {id:'m1',d:'テナントを3つ入れよう',r:150,chk:function(){return tc()>=3;},max:3,prg:function(){return tc();}},
-  {id:'m2',d:'収入を30/秒以上に',r:200,chk:function(){return bInc()>=30;},max:30,prg:function(){return bInc();}},
-  {id:'m3',d:'5フロアにしよう',r:300,chk:function(){return floors.length>=5;},max:5,prg:function(){return floors.length;}},
-  {id:'m4',d:'Lv.2に上げよう',r:400,chk:function(){return getLv()>=2;},max:1,prg:function(){return getLv()>=2?1:0;}},
-  {id:'m5',d:'収入を100/秒以上に',r:600,chk:function(){return bInc()>=100;},max:100,prg:function(){return bInc();}},
-  {id:'m6',d:'10フロアにしよう',r:1000,chk:function(){return floors.length>=10;},max:10,prg:function(){return floors.length;}},
-  {id:'m7',d:'CPU対決に勝とう',r:800,chk:function(){return battleWins>0;},max:1,prg:function(){return battleWins>0?1:0;}},
-  {id:'m8',d:'水族館を作ろう',r:3000,chk:function(){return hT('aqua');},max:1,prg:function(){return hT('aqua')?1:0;}}
-];
-var RANKS = [
-  {min:0,n:'ちいさなビル',s:'★'},
-  {min:5,n:'ふつうのビル',s:'★★'},
-  {min:10,n:'りっぱなビル',s:'★★★'},
-  {min:15,n:'高層ビル',s:'★★★★'},
-  {min:20,n:'超高層ビル',s:'★★★★★'}
-];
-var CPU_NAMES = ['ライバルビル','こんぺタワー','ぎんざビル','まちかどハウス'];
-
-// 天気
-var SEASONS = ['🌸 春','🌻 夏','🍂 秋','❄️ 冬'];
-var WEATHERS = [
-  {id:'sunny',n:'☀️ 晴れ',m:1.2,cls:'wb-sunny'},
-  {id:'cloudy',n:'☁️ くもり',m:1.0,cls:'wb-cloudy'},
-  {id:'rainy',n:'🌧️ 雨',m:0.7,cls:'wb-rainy'},
-  {id:'snowy',n:'❄️ 雪',m:0.6,cls:'wb-snowy'}
-];
-
-// 屋上テナント
-var ROOF_TN = {
-  terrace:{n:'テラスカフェ',p:300,i:32,cat:'food'},
-  obs:{n:'展望台',p:400,i:50,cat:'fun'},
-  solar:{n:'太陽光パネル',p:250,i:30,cat:'work'},
-  adboard:{n:'広告看板',p:180,i:20,cat:'work'},
-  heli:{n:'ヘリポート',p:600,i:80,cat:'big'}
-};
-
-// ローン
-var LOAN_OPTS = [
-  {amount:500,rate:0.08,label:'500円借りる（金利8%/分）'},
-  {amount:2000,rate:0.10,label:'2000円借りる（金利10%/分）'},
-  {amount:5000,rate:0.12,label:'5000円借りる（金利12%/分）'}
-];
-
-// ===== 状態変数 =====
-function randFireCD(){ return 180 + Math.floor(Math.random()*120); }
-
-var CW = 360;
-var FH = 56, SKY = 34, BASE = 54, WL = 8;
-var money = 100;
-var floors = [{slots:[null]},{slots:[null]},{slots:[null]}];
-var parks = 1;
-var doneMis = new Set();
-var battleWins = 0;
-var fireCD = 300;
-var cpuCD = 300;
-var prevLv = 1;
-var aEv = null, eTmr = 0, mult = 1, onSale = false;
-var people = [], confetti = [], firefighters = [];
-var fireOn = false, celebOn = false, ffSpawned = false;
-var celebX = 0, celebY = 0, lvMsgTmr = 0;
-var battleActive = false, cpuData = null;
-var ticker = 0;
-var rooftop = {unlocked:false, slots:[null,null]};
-var debt = 0, debtRate = 0;
-var season = 0, seasonCD = 90;
-var weather = WEATHERS[0], weatherCD = 45;
-var aCtx = null;
-var _admUnlock = false;
-
-// ===== ヘルパー関数 =====
-function fTop(fi){
-  var rOff = rooftop.unlocked ? 32 : 0;
-  return SKY + rOff + (floors.length - 1 - fi) * FH;
-}
-function fMid(fi){ return fTop(fi) + FH/2; }
-function bTop(){
-  var rOff = rooftop.unlocked ? 32 : 0;
-  return SKY + rOff + floors.length * FH;
-}
-function cH(){ return bTop() + BASE; }
-function bInc(){
-  var n = parks * 8;
-  floors.forEach(function(f){
-    f.slots.forEach(function(t){ if(t && TN[t]) n += TN[t].i; });
-  });
-  if(rooftop.unlocked){
-    rooftop.slots.forEach(function(t){ if(t && ROOF_TN[t]) n += ROOF_TN[t].i; });
-  }
-  n = Math.round(n * (weather ? weather.m : 1));
-  return n;
-}
-function tInc(){ return Math.round(bInc() * mult); }
-function tc(){ return floors.reduce(function(s,f){ return s + f.slots.filter(function(t){ return t!==null; }).length; }, 0); }
-function hT(k){ return floors.some(function(f){ return f.slots.indexOf(k) >= 0; }); }
-function getLv(){
-  if(_admUnlock) return 5;
-  var inc = bInc();
-  for(var i=5;i>=1;i--) if(inc >= LV_REQ[i]) return i;
-  return 1;
-}
-function getRnk(){
-  var n = floors.length;
-  for(var i=RANKS.length-1;i>=0;i--) if(n >= RANKS[i].min) return RANKS[i];
-  return RANKS[0];
-}
-function gCol(k){
-  if(TN[k] && CATS[TN[k].cat]) return CATS[TN[k].cat].c;
-  return '#888';
-}
-function h2r(h, a){
-  var r=parseInt(h.slice(1,3),16), g=parseInt(h.slice(3,5),16), b=parseInt(h.slice(5,7),16);
-  return 'rgba('+r+','+g+','+b+','+a+')';
-}
-
-// ===== サウンド =====
-function gA(){
-  if(!aCtx) aCtx = new(window.AudioContext || window.webkitAudioContext)();
-  return aCtx;
-}
-function playPip(){ try{ var ac=gA(); [2200,2800].forEach(function(f,i){ setTimeout(function(){ var o=ac.createOscillator(),g=ac.createGain(); o.connect(g); g.connect(ac.destination); o.type='sine'; o.frequency.value=f; g.gain.setValueAtTime(.04,ac.currentTime); g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.06); o.start(); o.stop(ac.currentTime+.06); }, i*130); }); }catch(e){} }
-function playClacker(){ try{ var ac=gA(); for(var i=0;i<12;i++){ (function(i2){ setTimeout(function(){ var o=ac.createOscillator(),g=ac.createGain(); o.connect(g); g.connect(ac.destination); o.type='square'; o.frequency.value=500+Math.random()*1000; g.gain.setValueAtTime(.08,ac.currentTime); g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.07); o.start(); o.stop(ac.currentTime+.07); }, i2*50); })(i); } }catch(e){} }
-function playSiren(){ try{ var ac=gA(),o=ac.createOscillator(),g=ac.createGain(); o.connect(g); g.connect(ac.destination); o.type='sawtooth'; g.gain.value=.1; for(var i=0;i<4;i++){ o.frequency.setValueAtTime(600,ac.currentTime+i*.55); o.frequency.linearRampToValueAtTime(1100,ac.currentTime+i*.55+.27); o.frequency.linearRampToValueAtTime(600,ac.currentTime+(i+1)*.55); } o.start(); o.stop(ac.currentTime+2.2); }catch(e){} }
-
-// ===== 人スポーン =====
-function spawnPpl(){
-  var cts = floors.flatMap(function(f,fi){ return f.slots.map(function(t,si){ return t?{fi:fi,si:si}:null; }); }).filter(function(x){ return x; });
-  if(!cts.length) return;
-  for(var i=0;i<2;i++){
-    var c = cts[Math.floor(Math.random()*cts.length)];
-    var side = Math.random()<.5 ? -1 : 1;
-    people.push({
-      x: side < 0 ? 0 : CW,
-      y: fMid(c.fi),
-      tx: WL + Math.random()*(CW-WL*2),
-      ty: fMid(c.fi),
-      vx: side*1.2, vy: 0,
-      life: 1, fi: c.fi, color: gCol(floors[c.fi].slots[c.si])
-    });
-  }
-}
-
-function updPpl(){
-  people = people.filter(function(p){
-    var dx = p.tx - p.x, dy = p.ty - p.y;
-    var d = Math.sqrt(dx*dx+dy*dy);
-    if(d < 2){ p.life -= 0.008; }
-    else{ p.x += dx/d*1.5; p.y += dy/d*1.0; }
-    if(fireOn && p.fi >= 0 && Math.random() < 0.04){
-      p.fi = Math.max(p.fi-1, 0);
-      p.ty = fMid(p.fi);
-    }
-    return p.life > 0 && p.x > -20 && p.x < CW+20;
-  });
-}
-
-// ===== Canvas描画 =====
-var ctx = null;
-function drawCanvas(){
-  if(!ctx) return;
-  var cv = el('bc');
-  if(!cv) return;
-  var W = CW, H = cH();
-  ctx.clearRect(0,0,W,H);
-
-  // 空
-  var sg = ctx.createLinearGradient(0,0,0,SKY);
-  sg.addColorStop(0,'#0A1E38'); sg.addColorStop(1,'#1A3A5C');
-  ctx.fillStyle = sg; ctx.fillRect(0,0,W,SKY);
-
-  // 地面
-  var bg = ctx.createLinearGradient(0,H-BASE,0,H);
-  bg.addColorStop(0,'#1A3020'); bg.addColorStop(1,'#0A1810');
-  ctx.fillStyle = bg; ctx.fillRect(0,H-BASE,W,BASE);
-
-  // 屋上
-  if(rooftop.unlocked){
-    var rTop = SKY, rH = 32;
-    ctx.fillStyle = '#2A4A6A';
-    ctx.fillRect(WL, rTop, W-WL*2, rH);
-    ctx.fillStyle = '#3A6A9A';
-    ctx.fillRect(WL, rTop, W-WL*2, 3);
-    ctx.fillStyle = 'rgba(255,255,255,.6)';
-    ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText('屋上', WL+3, rTop+rH-4);
-    var rsw = (W-WL*2)/2;
-    rooftop.slots.forEach(function(t,si){
-      var rx = WL + si*rsw + 3, ry = rTop+4, rw = rsw-6, rh = rH-8;
-      if(t && ROOF_TN[t]){
-        var rt = ROOF_TN[t];
-        var col = CATS[rt.cat] ? CATS[rt.cat].c : '#888';
-        ctx.fillStyle = h2r(col, 0.3);
-        ctx.fillRect(rx,ry,rw,rh);
-        ctx.fillStyle = col;
-        ctx.font = 'bold 6px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText(rt.n, rx+rw/2, ry+rh/2+1);
-        ctx.font = '5px sans-serif';
-        ctx.fillText('+'+rt.i+'/秒', rx+rw/2, ry+rh-2);
-      }else{
-        ctx.strokeStyle = 'rgba(255,255,255,.2)';
-        ctx.lineWidth = 0.8;
-        ctx.strokeRect(rx,ry,rw,rh);
-        ctx.fillStyle = 'rgba(255,255,255,.3)';
-        ctx.font = '6px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('あき', rx+rw/2, ry+rh/2+2);
-      }
-    });
-  }
-
-  // フロア
-  floors.forEach(function(f,fi){
-    var y = fTop(fi);
-    var rnk = getRnk();
-    // 壁
-    ctx.fillStyle = fi%2===0 ? '#1A3050' : '#152840';
-    ctx.fillRect(WL, y, W-WL*2, FH-1);
-    // スロット
-    var sw = (W-WL*2) / Math.max(1, f.slots.length);
-    f.slots.forEach(function(t,si){
-      var sx = WL + si*sw;
-      if(t && TN[t]){
-        var tc2 = TN[t];
-        var col = gCol(t);
-        ctx.fillStyle = h2r(col, 0.25);
-        ctx.fillRect(sx+1, y+1, sw-2, FH-3);
-        ctx.fillStyle = col;
-        ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText(tc2.n, sx+sw/2, y+FH/2+1);
-        ctx.font = '7px sans-serif';
-        ctx.fillStyle = 'rgba(255,255,255,.55)';
-        ctx.fillText('+'+tc2.i+'/秒', sx+sw/2, y+FH/2+11);
-      }else{
-        ctx.fillStyle = 'rgba(255,255,255,.06)';
-        ctx.fillRect(sx+1,y+1,sw-2,FH-3);
-        ctx.fillStyle = 'rgba(255,255,255,.2)';
-        ctx.font = '8px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('あき', sx+sw/2, y+FH/2+3);
-      }
-    });
-    // 階数
-    ctx.fillStyle = 'rgba(255,255,255,.18)';
-    ctx.font = '7px sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText((floors.length-fi)+'F', WL+2, y+8);
-  });
-
-  // 火事
-  if(fireOn){
-    var ffi = Math.floor(Math.random()*floors.length);
-    ctx.fillStyle = 'rgba(255,'+(100+Math.floor(Math.random()*100))+',0,0.25)';
-    ctx.fillRect(WL, fTop(ffi), W-WL*2, FH);
-    ctx.fillStyle = '#FF4400';
-    ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('🔥', W/2, fTop(ffi)+FH/2+5);
-  }
-
-  // 消防士
-  firefighters.forEach(function(ff){
-    ctx.fillStyle = '#FF2200';
-    ctx.font = '14px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('🚒', ff.x, ff.y);
-    if(!ff.done){
-      var dx2=ff.tx-ff.x, dy2=ff.ty-ff.y;
-      var d2=Math.sqrt(dx2*dx2+dy2*dy2);
-      if(d2>3){ ff.x+=dx2/d2*2; ff.y+=dy2/d2*2; }
-      else ff.done=true;
-    }
-  });
-
-  // 人
-  people.forEach(function(p){
-    ctx.fillStyle = p.color || '#88AACC';
-    ctx.globalAlpha = p.life;
-    ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('🧍', p.x, p.y);
-    ctx.globalAlpha = 1;
-  });
-
-  // 紙吹雪
-  confetti = confetti.filter(function(c){
-    c.x+=c.vx; c.y+=c.vy; c.life-=0.015; c.rot+=0.1;
-    ctx.save();
-    ctx.translate(c.x,c.y); ctx.rotate(c.rot);
-    ctx.globalAlpha = c.life;
-    ctx.fillStyle = 'hsl('+c.hue+',90%,60%)';
-    ctx.fillRect(-c.sz/2,-c.sz/2,c.sz,c.sz);
-    ctx.restore();
-    ctx.globalAlpha = 1;
-    return c.life > 0;
-  });
-
-  // 駐車場
-  var py = H - BASE + 4;
-  ctx.fillStyle = '#0A1810';
-  ctx.fillRect(WL, py, W-WL*2, BASE-8);
-  ctx.fillStyle = 'rgba(255,255,255,.15)';
-  ctx.font = '8px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText('B1 駐車場 P×'+parks, WL+3, py+12);
-  for(var pi=0;pi<Math.min(parks,5);pi++){
-    ctx.fillStyle = '#1A3060';
-    ctx.fillRect(WL+4+pi*30, py+16, 24, 20);
-    ctx.fillStyle = '#2244AA';
-    ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('🚗', WL+16+pi*30, py+30);
-  }
-}
-
-// ===== イベント =====
-function doEv(){
-  if(aEv || fireOn) return;
-  var ev = EVENTS[Math.floor(Math.random()*EVENTS.length)];
-  aEv = ev; eTmr = ev.dur;
-  mult = ev.m !== undefined ? ev.m : 1;
-  onSale = ev.isSale || false;
-  if(ev.bonus) money += ev.bonus;
-  if(ev.id === 'celeb'){
-    celebOn = true;
-    playClacker();
-    confetti = [];
-    for(var i=0;i<60;i++) confetti.push({x:Math.random()*CW,y:-10,vx:(Math.random()-.5)*5,vy:1.5+Math.random()*3,hue:Math.random()*360,sz:3+Math.random()*5,life:1,rot:0});
-  }
-  showFlash(ev.n, ev.t==='good'?'#0F6E56':'#A32D2D');
-  rUI();
-}
-function endEv(){
-  aEv=null; eTmr=0; mult=1; onSale=false; celebOn=false;
-  rUI();
-}
-
-// ===== 火事 =====
-function startFire(){
-  if(fireOn) return;
-  fireOn=true; ffSpawned=false; firefighters=[];
-  playSiren();
-  showFlash('🔥 火事だ！消防士をタップして誘導！','#A32D2D');
-  setTimeout(function(){
-    if(!ffSpawned){
-      ffSpawned=true;
-      for(var i=0;i<2;i++) firefighters.push({x:WL+20+i*40,y:bTop()-5,tx:WL+20+i*40,ty:bTop()-5,done:true});
-    }
-  },3000);
-  rUI();
-}
-function endFire(){
-  fireOn=false; firefighters=[]; ffSpawned=false;
-  fireCD = randFireCD();
-  showFlash('🚒 鎮火した！','#0F6E56');
-  rUI();
-}
-
-// ===== CPU対決 =====
-function startBattle(){
-  if(battleActive || floors.length<2) return;
-  battleActive=true;
-  var name = CPU_NAMES[Math.floor(Math.random()*CPU_NAMES.length)];
-  cpuData = {name:name, inc:Math.floor(bInc()*(0.6+Math.random()*0.8)), result:null};
-  showFlash('⚔️ '+name+'から挑戦状！','#534AB7');
-  rUI();
-  setTimeout(function(){
-    if(!battleActive) return;
-    var win = bInc() >= cpuData.inc;
-    cpuData.result = win;
-    if(win){ money += cpuData.inc*2; battleWins++; showFlash('🏆 対決勝利！+'+cpuData.inc*2+'円','#0F6E56'); }
-    else{ money = Math.max(0, money*0.7|0); showFlash('💀 対決敗北… お金が減った','#A32D2D'); }
-    battleActive=false; cpuData=null;
-    rUI();
-  },8000);
-}
-
-// ===== UI更新 =====
-function rUI(){
-  try{ rStats(); }catch(e){}
-  try{ rFloors(); }catch(e){}
-  try{ rRoof(); }catch(e){}
-  try{ rPark(); }catch(e){}
-  try{ rLoan(); }catch(e){}
-  try{ rMis(); }catch(e){}
-  try{ rEv(); }catch(e){}
-  try{ rTimers(); }catch(e){}
-}
-
-function rStats(){
-  var rnk = getRnk();
-  el('vMoney').textContent = Math.floor(money).toLocaleString();
-  el('vInc').textContent = tInc();
-  el('vRnk').textContent = rnk.s;
-  el('vLv').textContent = 'Lv.'+getLv();
-}
-
-function rEv(){
-  var bar = el('evBar');
-  if(aEv){
-    bar.style.display='block';
-    bar.className = 'ev-bar ' + (aEv.t==='good'?'ev-good':'ev-bad');
-    bar.textContent = aEv.n + ' (' + eTmr + '秒)';
-  }else{ bar.style.display='none'; }
-  var bb = el('battleBox');
-  if(battleActive && cpuData){
-    bb.style.display='block';
-    bb.textContent = '⚔️ '+cpuData.name+'（'+cpuData.inc+'/秒）と対決中…';
-  }else{ bb.style.display='none'; }
-}
-
-function rTimers(){
-  var lv = getLv();
-  var h = '';
-  h += '<div class="timer-item">🔥 火事まで '+Math.floor(fireCD/60)+'分'+fireCD%60+'秒</div>';
-  h += '<div class="timer-item">⚔️ CPU対決まで '+Math.floor(cpuCD/60)+'分'+cpuCD%60+'秒</div>';
-  el('timers').innerHTML = h;
-}
-
-function rFloors(){
-  var lv = getLv();
-  var h = '';
-  // フロア追加
-  var addCost = (floors.length+1)*100;
-  h += '<button class="mbtn" onclick="addFloor()" '+(money<addCost?'disabled':'')+'>＋ フロアを追加（'+addCost+'円）</button>';
-  floors.forEach(function(f,fi){
-    h += '<div style="margin-top:6px;padding:8px;background:rgba(255,255,255,.04);border-radius:8px;">';
-    h += '<div style="font-size:10px;color:#5FAABB;margin-bottom:4px;">'+(floors.length-fi)+'F</div>';
-    h += '<div style="display:flex;gap:5px;flex-wrap:wrap;">';
-    f.slots.forEach(function(t,si){
-      if(t){
-        var tn2 = TN[t];
-        h += '<span style="font-size:10px;padding:4px 8px;background:'+h2r(gCol(t),.15)+';border:1px solid '+h2r(gCol(t),.4)+';color:'+gCol(t)+';border-radius:6px;cursor:pointer;" onclick="removeT('+fi+','+si+')">';
-        h += tn2.n+' ✕</span>';
-      }else{
-        h += '<button class="tbtn" style="padding:4px 10px;font-size:10px;" onclick="openFloorPicker('+fi+','+si+')">＋ 設置</button>';
-      }
-    });
-    // スロット追加
-    if(f.slots.length < 3){
-      var sc = f.slots.length * 200;
-      h += '<button class="tbtn" style="padding:4px 8px;font-size:9px;color:#5FAABB;" onclick="addSlot('+fi+')" '+(money<sc?'disabled':'')+'>スロット追加（'+sc+'円）</button>';
-    }
-    h += '</div></div>';
-  });
-  el('flSec').innerHTML = h;
-}
-
-function addFloor(){
-  var cost = (floors.length+1)*100;
-  if(money<cost){ showFlash('お金が足りない！','#A32D2D'); return; }
-  money -= cost;
-  floors.unshift({slots:[null]});
-  showFlash('🏢 新しいフロアを追加！','#0F6E56');
-  rUI();
-}
-function addSlot(fi){
-  var cost = floors[fi].slots.length*200;
-  if(money<cost){ showFlash('お金が足りない！','#A32D2D'); return; }
-  money -= cost;
-  floors[fi].slots.push(null);
-  rUI();
-}
-
-var _picking = {fi:-1, si:-1};
-function openFloorPicker(fi,si){
-  _picking.fi=fi; _picking.si=si;
-  var lv = getLv();
-  var h = '';
-  Object.keys(TN).forEach(function(k){
-    var t = TN[k];
-    if(t.lv > lv) return;
-    var cost = onSale ? Math.floor(t.p/2) : t.p;
-    var can = money >= cost;
-    var col = CATS[t.cat].c;
-    h += '<button class="tbtn" onclick="placeT(\''+k+'\')" '+(can?'':'disabled')+' style="border-color:'+h2r(col,.3)+';color:'+col+';">';
-    h += '<b>'+t.n+'</b> <span style="color:#888;font-size:10px;">'+cost+'円 / +'+t.i+'/秒</span></button>';
-  });
-  el('mdFloorTitle').textContent = (floors.length-fi)+'F スロット'+(si+1)+'に設置';
-  el('mdFloorList').innerHTML = h;
-  openMd('mdFloor');
-}
-function placeT(k){
-  var fi=_picking.fi, si=_picking.si;
-  if(fi<0) return;
-  var cost = onSale ? Math.floor(TN[k].p/2) : TN[k].p;
-  if(money<cost){ showFlash('お金が足りない！','#A32D2D'); return; }
-  money -= cost; onSale=false;
-  floors[fi].slots[si] = k;
-  closeMd('mdFloor');
-  showFlash(TN[k].n+'を設置！', gCol(k));
-  rUI();
-}
-function removeT(fi,si){
-  var k = floors[fi].slots[si];
-  if(!k) return;
-  if(!confirm(TN[k].n+'を撤去？（'+Math.floor(TN[k].p/2)+'円返ってくるよ）')) return;
-  money += Math.floor(TN[k].p/2);
-  floors[fi].slots[si] = null;
-  showFlash('撤去した！+'+Math.floor(TN[k].p/2)+'円','#534AB7');
-  rUI();
-}
-
-function rRoof(){
-  var h = '';
-  h += '<div class="roof-hd">🏙️ 屋上スペース';
-  if(rooftop.unlocked) h += ' <span style="font-size:9px;color:#8AAABB;">開放済み</span>';
-  h += '</div>';
-  if(!rooftop.unlocked){
-    h += '<button class="mbtn" onclick="unlockRoof()" '+(money<500?'disabled':'')+'>屋上を開放する（500円）</button>';
-  }else{
-    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
-    rooftop.slots.forEach(function(t,si){
-      if(t && ROOF_TN[t]){
-        var rt = ROOF_TN[t], col = CATS[rt.cat].c;
-        h += '<span style="font-size:10px;padding:4px 8px;background:'+h2r(col,.15)+';border:1px solid '+h2r(col,.4)+';color:'+col+';border-radius:6px;cursor:pointer;" onclick="removeRoof('+si+')">';
-        h += rt.n+' ✕</span>';
-      }else{
-        h += '<button class="tbtn" style="padding:4px 10px;font-size:10px;" onclick="openRoofPicker('+si+')">＋ 設置</button>';
-      }
-    });
-    h += '</div>';
-  }
-  el('roofSec').innerHTML = h;
-}
-function unlockRoof(){
-  if(money<500){ showFlash('お金が足りない！','#A32D2D'); return; }
-  money-=500; rooftop.unlocked=true;
-  showFlash('🏙️ 屋上を開放した！','#4A9AB8');
-  rUI();
-}
-var _roofSi = -1;
-function openRoofPicker(si){
-  _roofSi=si;
-  var h='';
-  Object.keys(ROOF_TN).forEach(function(k){
-    var rt=ROOF_TN[k], can=money>=rt.p, col=CATS[rt.cat].c;
-    h+='<button class="tbtn" onclick="placeRoof(\''+k+'\')" '+(can?'':'disabled')+' style="border-color:'+h2r(col,.3)+';color:'+col+';">';
-    h+='<b>'+rt.n+'</b> <span style="color:#888;font-size:10px;">'+rt.p+'円 / +'+rt.i+'/秒</span></button>';
-  });
-  el('mdRoofList').innerHTML=h;
-  openMd('mdRoof');
-}
-function placeRoof(k){
-  if(_roofSi<0) return;
-  if(money<ROOF_TN[k].p){ showFlash('お金が足りない！','#A32D2D'); return; }
-  money-=ROOF_TN[k].p; rooftop.slots[_roofSi]=k;
-  closeMd('mdRoof');
-  showFlash(ROOF_TN[k].n+'を設置！',CATS[ROOF_TN[k].cat].c);
-  rUI();
-}
-function removeRoof(si){
-  var k=rooftop.slots[si]; if(!k) return;
-  var ref=Math.floor(ROOF_TN[k].p/2);
-  if(!confirm(ROOF_TN[k].n+'を撤去？（'+ref+'円返ってくるよ）')) return;
-  money+=ref; rooftop.slots[si]=null;
-  showFlash('撤去！+'+ref+'円','#534AB7');
-  rUI();
-}
-
-function rPark(){
-  var cost=(parks+1)*150;
-  var h='<div style="font-size:11px;color:#8AAABB;margin-bottom:6px;">🚗 駐車場 ×'+parks+' (+'+parks*8+'/秒)</div>';
-  h+='<button class="mbtn" onclick="addPark()" '+(money<cost?'disabled':'')+'>駐車場を増やす（'+cost+'円）</button>';
-  el('pkSec').innerHTML=h;
-}
-function addPark(){
-  var cost=(parks+1)*150;
-  if(money<cost){ showFlash('お金が足りない！','#A32D2D'); return; }
-  money-=cost; parks++;
-  showFlash('🚗 駐車場を増やした！','#0F6E56');
-  rUI();
-}
-
-function rLoan(){
-  var h='';
-  if(debt>0){
-    h+='<div style="font-size:11px;color:#FF8888;margin-bottom:6px;">💳 残債：'+Math.ceil(debt)+'円（利率'+Math.round(debtRate*100)+'%/分）</div>';
-    h+='<button class="mbtn" onclick="repayLoan()" '+(money<debt?'disabled':'')+' style="color:#FF8888;border-color:rgba(180,50,50,.3);">全額返済（'+Math.ceil(debt)+'円）</button>';
-  }else{
-    h+='<div class="loan-row">';
-    LOAN_OPTS.forEach(function(opt){
-      h+='<button class="lbtn" onclick="takeLoan('+opt.amount+','+opt.rate+')">'+opt.label+'</button>';
-    });
-    h+='</div>';
-  }
-  el('loanSec').innerHTML=h;
-}
-function takeLoan(amount,rate){
-  if(debt>0){ showFlash('先に返済してね！','#A32D2D'); return; }
-  money+=amount; debt=amount; debtRate=rate;
-  showFlash('💳 '+amount+'円を借りた！','#AA3333');
-  rUI();
-}
-function repayLoan(){
-  var d=Math.ceil(debt);
-  if(money<d){ showFlash('お金が足りない！','#A32D2D'); return; }
-  money-=d; debt=0; debtRate=0;
-  showFlash('💳 完済！','#0F6E56');
-  rUI();
-}
-
-function rMis(){
-  var lv=getLv();
-  var h='';
-  MISSIONS.forEach(function(m){
-    var done=doneMis.has(m.id);
-    var prg=Math.min(m.prg(),m.max);
-    h+='<div style="margin-bottom:6px;opacity:'+(done?'.5':'1')+'">';
-    h+='<div style="font-size:11px;color:'+(done?'#0F6E56':'#ccc')+';margin-bottom:2px;">'+(done?'✅':'⬜')+' '+m.d+'</div>';
-    if(!done){
-      var pct=Math.min(prg/m.max*100,100);
-      h+='<div style="height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;">';
-      h+='<div style="height:100%;background:#EF9F27;width:'+pct+'%;border-radius:3px;transition:width .3s;"></div></div>';
-      h+='<div style="font-size:9px;color:#888;margin-top:1px;">'+prg+' / '+m.max+' → 達成で+'+m.r+'円</div>';
-    }
-    h+='</div>';
-  });
-  el('misSec').innerHTML=h;
-}
-
-function chkMis(){
-  MISSIONS.forEach(function(m){
-    if(!doneMis.has(m.id)&&m.chk()){
-      doneMis.add(m.id);
-      money+=m.r;
-      showFlash('🏅 ミッション達成！ +'+m.r+'円','#EF9F27');
-    }
-  });
-}
-
-function chkLv(){
-  var lv=getLv();
-  if(lv>prevLv){
-    prevLv=lv;
-    showFlash('⬆️ Lv.'+lv+'に上がった！','#534AB7');
-  }
-}
-
-// ===== メインループ =====
-var _loopId = null;
-var _animId = null;
-var _running = false;
-
-function mainLoop(){
-  if(!_running) return;
-  try{
-    money += tInc();
-    ticker++;
-    if(!fireOn){ fireCD--; if(fireCD<=0) startFire(); }
-    if(!battleActive){ cpuCD--; if(cpuCD<=0){ cpuCD=300; startBattle(); } }
-    if(aEv){ eTmr--; if(eTmr<=0) endEv(); }
-    else if(!fireOn && Math.random()<.05) doEv();
-    // 天気
-    weatherCD--;
-    if(weatherCD<=0){
-      var probs=[0.4,0.3,0.2,0.1];
-      if(season===1) probs=[0.5,0.2,0.2,0.1];
-      if(season===3) probs=[0.1,0.2,0.2,0.5];
-      var r=Math.random(), cum=0, wi=0;
-      for(var i=0;i<probs.length;i++){ cum+=probs[i]; if(r<cum){ wi=i; break; } }
-      weather = WEATHERS[wi];
-      var wb=el('wbar');
-      if(wb){ wb.className='wbar '+weather.cls; wb.innerHTML=weather.n+' <span class="stag" id="stag">'+SEASONS[season]+'</span>'; }
-      weatherCD = 30 + Math.floor(Math.random()*60);
-    }
-    // 季節
-    seasonCD--;
-    if(seasonCD<=0){
-      season=(season+1)%4;
-      seasonCD=90;
-      try{ el('stag').textContent=SEASONS[season]; }catch(e){}
-      showFlash(SEASONS[season]+'になった！','#0A4A2A');
-    }
-    // ローン利子
-    if(debt>0){
-      debt += debt * debtRate / 60;
-      if(debt > money*5){ money=Math.max(0,money-Math.floor(debt/2)); debt=0; debtRate=0; showFlash('💳 返済できず…ペナルティ！','#A32D2D'); }
-    }
-    chkLv(); chkMis();
-    if(ticker%2===0) rStats();
-    if(ticker%5===0){ spawnPpl(); rEv(); rTimers(); if(debt>0) rLoan(); }
-    if(ticker%10===0) saveGame();
-  }catch(e){ console.log('mainLoop err:',e); }
-}
-
-function animLoop(){
-  if(!_running) return;
-  try{ updPpl(); drawCanvas(); }catch(e){}
-  _animId = requestAnimationFrame(animLoop);
-}
-
-// ===== ナビゲーション =====
-function goHome(){
-  _running=false;
-  if(_loopId){ clearInterval(_loopId); _loopId=null; }
-  showScreen('sHome');
-  try{ updateBadge(); pickSlot(currentSlot); }catch(e){}
-}
-
-function goHow(){ showScreen('sHow'); }
-
-function goGame(){
-  showScreen('sGame');
-  try{
-    _running=false;
-    if(_loopId){ clearInterval(_loopId); _loopId=null; }
-    // 変数初期化
-    money=100; floors=[{slots:[null]},{slots:[null]},{slots:[null]}]; parks=1;
-    doneMis=new Set(); battleWins=0;
-    fireCD=randFireCD(); cpuCD=300; prevLv=1;
-    aEv=null; eTmr=0; mult=1; onSale=false;
-    people=[]; confetti=[]; firefighters=[];
-    fireOn=false; celebOn=false; ffSpawned=false;
-    battleActive=false; cpuData=null; ticker=0;
-    rooftop={unlocked:false,slots:[null,null]};
-    debt=0; debtRate=0;
-    season=0; seasonCD=90;
-    weather=WEATHERS[0]; weatherCD=45;
-    // ロード
-    loadGame();
-    // Canvas設定
-    var cv=el('bc');
-    CW=Math.max(cv.offsetWidth||0,320);
-    cv.width=CW; cv.height=cH();
-    ctx=cv.getContext('2d');
-    // タップで消防士誘導
-    if(!cv._bound){
-      cv._bound=true;
-      cv.addEventListener('click',function(e){
-        try{ gA(); }catch(x){}
-        if(!fireOn||!firefighters.length) return;
-        var rc=e.target.getBoundingClientRect();
-        var cx2=(e.clientX-rc.left)*(CW/rc.width);
-        var cy2=(e.clientY-rc.top)*(cH()/rc.height);
-        var best=firefighters[0], bd=999999;
-        firefighters.forEach(function(ff){ var d=Math.sqrt((ff.x-cx2)*(ff.x-cx2)+(ff.y-cy2)*(ff.y-cy2)); if(d<bd){bd=d;best=ff;} });
-        if(best){ best.tx=cx2; best.ty=cy2; best.done=false; }
-      });
-    }
-    // 天気バー初期化
-    var wb=el('wbar');
-    if(wb){ wb.className='wbar '+weather.cls; wb.innerHTML=weather.n+' <span class="stag" id="stag">'+SEASONS[season]+'</span>'; }
-    // UI描画
-    rUI();
-    // ループ開始
-    _running=true;
-    _loopId=setInterval(mainLoop,1000);
-    animLoop();
-  }catch(e){ console.log('goGame err:',e); alert('エラー: '+e.message); }
-}
-
-// ===== 管理者コマンド =====
-var _admSeq=['ic','ic','ic','md','md','rk'];
-var _admStep=0, _admTimer=null;
-function _admTap(id){
-  clearTimeout(_admTimer);
-  _admTimer=setTimeout(function(){ _admStep=0; },3000);
-  if(id===_admSeq[_admStep]){ _admStep++; if(_admStep>=_admSeq.length){ _admStep=0; openMd('mdAdmin'); } }
-  else _admStep=0;
-}
-function adm(cmd){
-  switch(cmd){
-    case 'm1k': money+=1000; break;
-    case 'm10k': money+=10000; break;
-    case 'fire': if(!fireOn) startFire(); break;
-    case 'celeb': doEv(); break;
-    case 'allmis': MISSIONS.forEach(function(m){ doneMis.add(m.id); }); break;
-    case 'lv5': _admUnlock=true; break;
-  }
-  closeMd('mdAdmin');
-  rUI();
-  showFlash('🔧 コマンド実行！','#534AB7');
-}
-
-// ===== 起動 =====
 (function(){
-  try{ updateBadge(); }catch(e){}
-  try{ pickSlot(1); }catch(e){}
+"use strict";
+// ================= 基本セットアップ =================
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+let W=0,H=0;
+window.addEventListener("resize",()=>{W=innerWidth;H=innerHeight;canvas.width=W;canvas.height=H;});
+W=innerWidth;H=innerHeight;canvas.width=W;canvas.height=H;
+
+let WORLD_W=0,WORLD_H=0;
+const inkCanvas=document.createElement("canvas");
+const inkCtx=inkCanvas.getContext("2d");
+
+const COLORS={1:"#ff3d8a",2:"#21e6c1"};
+const COLORS_DARK={1:"#c2185b",2:"#0f9e86"};
+
+const CELL=14;
+let cols=0,rows=0,grid=null,paintableTotal=0;
+let obstacles=[],movingWalls=[],speedPads=[],warps=[],fountains=[];
+let players=[],projectiles=[],particles=[],items=[];
+let boss=null,zone=null,zoneHold={1:0,2:0},zoneOwner=0;
+let running=false,timeLeft=90,lastTime=0,countTimer=0,gameTime=0;
+let camX=0,camY=0,rushActive=false,rushShownT=0,itemSpawnT=0;
+
+// ================= モード =================
+const MODES=[
+ {id:"turf",emoji:"🎨",name:"ナワバリバトル",desc:"ぬった広さで勝負！きほんのモード"},
+ {id:"item",emoji:"💊",name:"アイテムバトル",desc:"パワーアップアイテムを取り合いながらぬる！"},
+ {id:"zone",emoji:"⭐",name:"エリア争奪",desc:"まん中のエリアを合計30秒キープしたら勝ち！"},
+ {id:"boss",emoji:"👹",name:"ボスバトル",desc:"みんなで力を合わせて巨大ボスをたおせ！"},
+ {id:"rush",emoji:"🔥",name:"ラッシュナワバリ",desc:"ラスト15秒、全員の武器が最強になるナワバリ！"},
+];
+let gameMode="turf";
+const modeGrid=document.getElementById("modeGrid");
+MODES.forEach((m,i)=>{
+  const b=document.createElement("button");
+  b.className="mode"+(i===0?" sel":"");
+  b.innerHTML='<span class="me">'+m.emoji+'</span><span>'+m.name+'<small>'+m.desc+'</small></span>';
+  b.addEventListener("click",()=>{
+    gameMode=m.id;
+    modeGrid.querySelectorAll(".mode").forEach(el=>el.classList.remove("sel"));
+    b.classList.add("sel");
+    beep(440+i*40,0.08,0.06);
+  });
+  modeGrid.appendChild(b);
+});
+
+// ================= 武器10種 =================
+const WEAPONS=[
+ {name:"わくわくシューター",desc:"バランス型のきほん",emoji:"🔫",cd:.45,pr:30,pspeed:430,plife:.55,count:1,spread:0,trailR:13,moveMul:1,cost:9},
+ {name:"れんしゃマシン",desc:"連射はやい！1発は小さめ",emoji:"⚡",cd:.14,pr:18,pspeed:470,plife:.45,count:1,spread:.16,trailR:12,moveMul:1,cost:3.5},
+ {name:"ドカンブラスター",desc:"おそいけど超でっかい",emoji:"💥",cd:1.15,pr:58,pspeed:300,plife:.7,count:1,spread:0,trailR:13,moveMul:.9,cost:24},
+ {name:"ピューンスナイパー",desc:"遠くまで一直線にぬる",emoji:"🎯",cd:.9,pr:24,pspeed:780,plife:.85,count:1,spread:0,trailR:11,moveMul:1,line:true,cost:16},
+ {name:"3れんシャワー",desc:"3方向に同時発射",emoji:"🚿",cd:.7,pr:24,pspeed:410,plife:.5,count:3,spread:.35,trailR:12,moveMul:1,cost:15},
+ {name:"ぽいっとボム",desc:"山なりに投げて大爆発",emoji:"🧨",cd:1.4,pr:64,pspeed:330,plife:.85,count:1,spread:0,trailR:12,moveMul:1,lob:true,cost:32},
+ {name:"ごろごろローラー",desc:"歩くだけで太くぬれる",emoji:"🛼",cd:.8,pr:42,pspeed:280,plife:.25,count:1,spread:0,trailR:30,moveMul:.85,cost:14},
+ {name:"するするふでペン",desc:"移動が速い＆跡ふとめ",emoji:"🖌️",cd:.5,pr:18,pspeed:430,plife:.45,count:1,spread:0,trailR:22,moveMul:1.2,cost:6},
+ {name:"ばしゃっとバケツ",desc:"近くにばしゃっと大量",emoji:"🪣",cd:.9,pr:50,pspeed:360,plife:.3,count:1,spread:0,trailR:13,moveMul:.95,cost:20},
+ {name:"みだれうちガン",desc:"4発を広〜くばらまく",emoji:"🎆",cd:.65,pr:20,pspeed:440,plife:.5,count:4,spread:.6,trailR:12,moveMul:1,cost:16},
+];
+let myWeapon=0;
+const grid_el=document.getElementById("weaponGrid");
+WEAPONS.forEach((w,i)=>{
+  const b=document.createElement("button");
+  b.className="wpn"+(i===0?" sel":"");
+  b.innerHTML='<span class="we">'+w.emoji+'</span><span>'+w.name+'<small>'+w.desc+'</small></span>';
+  b.addEventListener("click",()=>{
+    myWeapon=i;
+    grid_el.querySelectorAll(".wpn").forEach(el=>el.classList.remove("sel"));
+    b.classList.add("sel");
+    beep(500+i*30,0.08,0.06);
+  });
+  grid_el.appendChild(b);
+});
+
+// ================= アイテム =================
+const ITEM_TYPES=[
+ {key:"rapid",e:"⚡",label:"れんしゃUP"},
+ {key:"big",e:"🍄",label:"きょだいか"},
+ {key:"fast",e:"👟",label:"スピードUP"},
+ {key:"inf",e:"💧",label:"インクほうだい"},
+];
+
+// ================= サウンド =================
+let audioCtx=null;
+function beep(freq,dur,vol,type){
+  try{
+    if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type=type||"sine";o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.08,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+(dur||0.15));
+    o.connect(g).connect(audioCtx.destination);
+    o.start();o.stop(audioCtx.currentTime+(dur||0.15));
+  }catch(e){}
+}
+
+// ================= ステージ生成 =================
+function rectFree(x,y,w,h,margin){
+  for(const o of obstacles){
+    if(x<o.x+o.w+margin&&x+w+margin>o.x&&y<o.y+o.h+margin&&y+h+margin>o.y)return false;
+  }
+  return true;
+}
+function setupStage(){
+  WORLD_W=Math.max(1200,Math.floor(W*2.1));
+  WORLD_H=Math.max(1700,Math.floor(H*2.1));
+  inkCanvas.width=WORLD_W;inkCanvas.height=WORLD_H;
+  inkCtx.clearRect(0,0,WORLD_W,WORLD_H);
+  cols=Math.ceil(WORLD_W/CELL);rows=Math.ceil(WORLD_H/CELL);
+  grid=new Int8Array(cols*rows);
+
+  // 障害物12こ
+  obstacles=[];
+  let tries=0;
+  while(obstacles.length<12&&tries<400){
+    tries++;
+    const ow=70+Math.random()*110,oh=70+Math.random()*110;
+    const ox=40+Math.random()*(WORLD_W-ow-80);
+    const oy=200+Math.random()*(WORLD_H-oh-400);
+    // エリア争奪モードは中央を空けておく
+    if(gameMode==="zone"){
+      const cx=WORLD_W/2,cy=WORLD_H/2;
+      if(ox<cx+170&&ox+ow>cx-170&&oy<cy+170&&oy+oh>cy-170)continue;
+    }
+    if(rectFree(ox,oy,ow,oh,50))obstacles.push({x:ox,y:oy,w:ow,h:oh,hgt:16+Math.random()*14});
+  }
+
+  // うごく壁 2まい（浮いてるから下の床はぬれる）
+  movingWalls=[];
+  for(let i=0;i<2;i++){
+    const ww=110,wh=26;
+    const wy=WORLD_H*(0.35+i*0.3);
+    const wx=WORLD_W*0.2+Math.random()*WORLD_W*0.3;
+    movingWalls.push({x:wx,y:wy,w:ww,h:wh,hgt:26,
+      vx:70*(i===0?1:-1),minX:60,maxX:WORLD_W-ww-60});
+  }
+
+  // スピード床 2まい
+  speedPads=[];
+  for(let i=0;i<2;i++){
+    for(let t=0;t<50;t++){
+      const pw=130+Math.random()*80,ph=90+Math.random()*50;
+      const px=40+Math.random()*(WORLD_W-pw-80);
+      const py=250+Math.random()*(WORLD_H-ph-500);
+      if(rectFree(px,py,pw,ph,20)){speedPads.push({x:px,y:py,w:pw,h:ph});break;}
+    }
+  }
+
+  // ワープ穴 1ペア
+  warps=[];
+  for(let t=0;t<80&&warps.length<2;t++){
+    const wx=80+Math.random()*(WORLD_W-160);
+    const wy=280+Math.random()*(WORLD_H-560);
+    if(rectFree(wx-24,wy-24,48,48,30)){
+      if(warps.length===1&&Math.hypot(wx-warps[0].x,wy-warps[0].y)<WORLD_W*0.4)continue;
+      warps.push({x:wx,y:wy});
+    }
+  }
+
+  // インクふんすい 1こ
+  fountains=[];
+  for(let t=0;t<60;t++){
+    const fx=100+Math.random()*(WORLD_W-200);
+    const fy=WORLD_H*0.35+Math.random()*WORLD_H*0.3;
+    if(rectFree(fx-30,fy-30,60,60,40)){fountains.push({x:fx,y:fy,t:2});break;}
+  }
+
+  // エリア争奪のゾーン
+  zone=null;zoneHold={1:0,2:0};zoneOwner=0;
+  if(gameMode==="zone"){
+    zone={x:WORLD_W/2-140,y:WORLD_H/2-140,w:280,h:280};
+  }
+
+  paintableTotal=0;
+  for(let gy=0;gy<rows;gy++)for(let gx=0;gx<cols;gx++){
+    const cx=gx*CELL+CELL/2,cy=gy*CELL+CELL/2;
+    let blocked=false;
+    for(const o of obstacles){
+      if(cx>o.x&&cx<o.x+o.w&&cy>o.y&&cy<o.y+o.h){blocked=true;break;}
+    }
+    grid[gy*cols+gx]=blocked?-1:0;
+    if(!blocked)paintableTotal++;
+  }
+}
+
+// ================= キャラクター =================
+function makePlayer(team,x,y,isHuman,wpn,name){
+  return {team,x,y,r:16,dirX:0,dirY:team===1?-1:1,baseSpeed:155,
+    isHuman:!!isHuman,fireCd:0,wpn:wpn,tx:x,ty:y,thinkT:Math.random(),
+    ink:100,dead:false,respawnT:0,inv:0,spawnX:x,spawnY:y,warpCd:0,
+    sp:0,kills:0,deaths:0,paintPts:0,name:name||"？",
+    buffs:{rapid:0,big:0,fast:0,inf:0}};
+}
+function setupPlayers(){
+  const botW=()=>Math.floor(Math.random()*WEAPONS.length);
+  if(gameMode==="boss"){
+    players=[
+      makePlayer(1,WORLD_W*0.5,WORLD_H-90,true,myWeapon,"あなた"),
+      makePlayer(1,WORLD_W*0.3,WORLD_H-90,false,botW(),"みかたA"),
+      makePlayer(1,WORLD_W*0.7,WORLD_H-90,false,botW(),"みかたB"),
+    ];
+    boss={x:WORLD_W*0.5,y:WORLD_H*0.25,r:54,hp:100,maxHp:100,team:2,
+      tx:WORLD_W*0.5,ty:WORLD_H*0.4,thinkT:0,atkT:2.5,stompT:5};
+  }else{
+    boss=null;
+    players=[
+      makePlayer(1,WORLD_W*0.5,WORLD_H-90,true,myWeapon,"あなた"),
+      makePlayer(1,WORLD_W*0.3,WORLD_H-90,false,botW(),"みかたA"),
+      makePlayer(1,WORLD_W*0.7,WORLD_H-90,false,botW(),"みかたB"),
+      makePlayer(2,WORLD_W*0.3,90,false,botW(),"てきA"),
+      makePlayer(2,WORLD_W*0.5,90,false,botW(),"てきB"),
+      makePlayer(2,WORLD_W*0.7,90,false,botW(),"てきC"),
+    ];
+  }
+  projectiles=[];particles=[];items=[];
+  for(const p of players)splat(p.spawnX,p.spawnY,60,p.team);
+}
+
+// ================= ぬる処理 =================
+function splat(x,y,r,team,owner){
+  inkCtx.fillStyle=COLORS[team];
+  inkCtx.beginPath();inkCtx.arc(x,y,r,0,Math.PI*2);inkCtx.fill();
+  const blobs=2+Math.floor(r/14);
+  for(let i=0;i<blobs;i++){
+    const a=Math.random()*Math.PI*2,d=r*(0.6+Math.random()*0.7);
+    const br=r*(0.2+Math.random()*0.35);
+    inkCtx.beginPath();inkCtx.arc(x+Math.cos(a)*d,y+Math.sin(a)*d,br,0,Math.PI*2);inkCtx.fill();
+  }
+  const gr=Math.ceil((r*1.05)/CELL);
+  const gx0=Math.floor(x/CELL),gy0=Math.floor(y/CELL);
+  for(let gy=gy0-gr;gy<=gy0+gr;gy++)for(let gx=gx0-gr;gx<=gx0+gr;gx++){
+    if(gx<0||gy<0||gx>=cols||gy>=rows)continue;
+    const idx=gy*cols+gx;
+    if(grid[idx]===-1)continue;
+    const dx=gx*CELL+CELL/2-x,dy=gy*CELL+CELL/2-y;
+    if(dx*dx+dy*dy<=r*r)grid[idx]=team;
+  }
+  // スペシャルゲージ＆ぬりポイント
+  if(owner){
+    owner.paintPts+=r*0.1;
+  }
+}
+function groundOwner(x,y){
+  const gx=Math.floor(x/CELL),gy=Math.floor(y/CELL);
+  if(gx<0||gy<0||gx>=cols||gy>=rows)return 0;
+  const v=grid[gy*cols+gx];
+  return v<0?0:v;
+}
+
+// ================= 入力 =================
+const input={mx:0,my:0,firing:false};
+let stickId=null,stickOx=0,stickOy=0;
+const baseEl=document.getElementById("stickBase");
+const knobEl=document.getElementById("stickKnob");
+function placeStick(el,x,y){el.style.left=(x-el.offsetWidth/2)+"px";el.style.top=(y-el.offsetHeight/2)+"px";}
+canvas.addEventListener("pointerdown",e=>{
+  if(!running)return;
+  if(e.clientX<W*0.55&&stickId===null){
+    stickId=e.pointerId;stickOx=e.clientX;stickOy=e.clientY;
+    baseEl.style.display="block";knobEl.style.display="block";
+    placeStick(baseEl,stickOx,stickOy);placeStick(knobEl,stickOx,stickOy);
+  }
+});
+canvas.addEventListener("pointermove",e=>{
+  if(e.pointerId!==stickId)return;
+  let dx=e.clientX-stickOx,dy=e.clientY-stickOy;
+  const d=Math.hypot(dx,dy),max=48;
+  if(d>max){dx*=max/d;dy*=max/d;}
+  placeStick(knobEl,stickOx+dx,stickOy+dy);
+  input.mx=d<8?0:dx/max;input.my=d<8?0:dy/max;
+});
+function stickEnd(e){
+  if(e.pointerId!==stickId)return;
+  stickId=null;input.mx=0;input.my=0;
+  baseEl.style.display="none";knobEl.style.display="none";
+}
+canvas.addEventListener("pointerup",stickEnd);
+canvas.addEventListener("pointercancel",stickEnd);
+const fireBtn=document.getElementById("fireBtn");
+fireBtn.addEventListener("pointerdown",e=>{e.preventDefault();input.firing=true;});
+fireBtn.addEventListener("pointerup",()=>input.firing=false);
+fireBtn.addEventListener("pointercancel",()=>input.firing=false);
+const spBtn=document.getElementById("spBtn");
+spBtn.addEventListener("pointerdown",e=>{
+  e.preventDefault();
+  if(running&&!players[0].dead)useSpecial(players[0]);
+});
+const keys={};
+window.addEventListener("keydown",e=>{
+  keys[e.key]=true;
+  if(e.key===" ")input.firing=true;
+  if(e.key==="e"&&running&&!players[0].dead)useSpecial(players[0]);
+});
+window.addEventListener("keyup",e=>{keys[e.key]=false;if(e.key===" ")input.firing=false;});
+
+// ================= 発射 =================
+function effWeapon(p){
+  const w=WEAPONS[p.wpn];
+  let cd=w.cd,pr=w.pr,cost=w.cost;
+  if(p.buffs.rapid>0)cd*=0.4;
+  if(p.buffs.big>0)pr*=1.7;
+  if(p.buffs.inf>0)cost=0;
+  if(rushActive){cd*=0.45;pr*=1.35;cost*=0.45;}
+  return {cd,pr,cost,base:w};
+}
+function fire(p){
+  if(p.fireCd>0||p.dead)return;
+  const ew=effWeapon(p),w=ew.base;
+  if(p.ink<ew.cost){
+    if(p.isHuman){beep(160,0.08,0.05,"square");}
+    return;
+  }
+  p.ink-=ew.cost;
+  p.fireCd=ew.cd;
+  let dx=p.dirX,dy=p.dirY;
+  if(dx===0&&dy===0){dy=p.team===1?-1:1;}
+  const base=Math.atan2(dy,dx);
+  for(let i=0;i<w.count;i++){
+    let a=base;
+    if(w.count>1)a=base+(i-(w.count-1)/2)*w.spread;
+    else if(w.spread)a=base+(Math.random()-0.5)*w.spread;
+    projectiles.push({x:p.x,y:p.y,vx:Math.cos(a)*w.pspeed,vy:Math.sin(a)*w.pspeed,
+      team:p.team,life:w.plife,maxLife:w.plife,pr:ew.pr,line:!!w.line,lob:!!w.lob,
+      owner:p});
+  }
+  if(p.isHuman)beep(w.lob?300:520,0.1,0.08,"square");
+}
+
+// ================= スペシャル：インクばくはつ =================
+function useSpecial(p){
+  if(p.sp<100||p.dead)return;
+  p.sp=0;
+  splat(p.x,p.y,140,p.team,p);
+  for(let k=0;k<22;k++){
+    particles.push({x:p.x,y:p.y,vx:(Math.random()-0.5)*420,vy:(Math.random()-0.5)*420,
+      r:4+Math.random()*6,life:0.6,team:p.team});
+  }
+  // 近くのてきを巻きこむ
+  for(const q of players){
+    if(q.team===p.team||q.dead||q.inv>0)continue;
+    if(Math.hypot(q.x-p.x,q.y-p.y)<150)killPlayer(q,p.team,p);
+  }
+  // ボスにも大ダメージ
+  if(boss&&Math.hypot(boss.x-p.x,boss.y-p.y)<200)damageBoss(22,p);
+  p.ink=Math.min(100,p.ink+40);
+  if(p.isHuman){beep(880,0.15,0.1);beep(520,0.25,0.1);beep(260,0.35,0.1,"sawtooth");}
+  else beep(500,0.2,0.06);
+}
+
+// ================= やられ＆リスポーン =================
+function killPlayer(p,byTeam,killer){
+  if(p.dead)return;
+  p.dead=true;
+  p.respawnT=3;
+  p.deaths++;
+  if(killer)killer.kills++;
+  p.dirX=0;p.dirY=0;
+  splat(p.x,p.y,46,byTeam);
+  for(let k=0;k<10;k++){
+    particles.push({x:p.x,y:p.y,vx:(Math.random()-0.5)*260,vy:(Math.random()-0.5)*260,
+      r:3+Math.random()*5,life:0.5,team:byTeam});
+  }
+  if(p.isHuman){beep(220,0.15,0.1,"sawtooth");beep(140,0.3,0.1,"sawtooth");}
+  else beep(400,0.12,0.05,"triangle");
+}
+function respawn(p){
+  p.dead=false;
+  p.x=p.spawnX;p.y=p.spawnY;
+  p.ink=100;
+  p.inv=2;
+  if(p.isHuman)beep(660,0.15,0.08);
+}
+
+// ================= ボス =================
+function damageBoss(dmg,by){
+  if(!boss||boss.hp<=0)return;
+  boss.hp-=dmg;
+  particles.push({x:boss.x,y:boss.y-30,vx:0,vy:-60,r:6,life:0.4,team:1});
+  if(boss.hp<=0){
+    boss.hp=0;
+    splat(boss.x,boss.y,180,1,by);
+    for(let k=0;k<30;k++){
+      particles.push({x:boss.x,y:boss.y,vx:(Math.random()-0.5)*500,vy:(Math.random()-0.5)*500,
+        r:5+Math.random()*7,life:0.8,team:1});
+    }
+    beep(880,0.2,0.12);beep(1100,0.3,0.12);
+    endGame(1);
+  }
+}
+function updateBoss(dt){
+  if(!boss||boss.hp<=0)return;
+  boss.thinkT-=dt;
+  if(boss.thinkT<=0){
+    boss.thinkT=1.5+Math.random();
+    // いちばん近い生きてるプレイヤーを追う（たまに気まぐれ）
+    let target=null,best=1e9;
+    for(const p of players){
+      if(p.dead)continue;
+      const d=Math.hypot(p.x-boss.x,p.y-boss.y);
+      if(d<best){best=d;target=p;}
+    }
+    if(target&&Math.random()<0.75){boss.tx=target.x;boss.ty=target.y;}
+    else{boss.tx=100+Math.random()*(WORLD_W-200);boss.ty=150+Math.random()*(WORLD_H-400);}
+  }
+  const dx=boss.tx-boss.x,dy=boss.ty-boss.y,d=Math.hypot(dx,dy);
+  if(d>20){
+    boss.x+=dx/d*62*dt;
+    boss.y+=dy/d*62*dt;
+    splat(boss.x,boss.y,42,2);
+  }
+  // 放射攻撃
+  boss.atkT-=dt;
+  if(boss.atkT<=0){
+    boss.atkT=2.3;
+    const n=8,off=Math.random()*Math.PI;
+    for(let i=0;i<n;i++){
+      const a=off+i/n*Math.PI*2;
+      projectiles.push({x:boss.x,y:boss.y,vx:Math.cos(a)*260,vy:Math.sin(a)*260,
+        team:2,life:1.0,maxLife:1.0,pr:30,owner:null});
+    }
+    beep(200,0.15,0.06,"sawtooth");
+  }
+  // ふみつけ
+  boss.stompT-=dt;
+  if(boss.stompT<=0){
+    boss.stompT=5;
+    splat(boss.x,boss.y,110,2);
+    for(const p of players){
+      if(p.dead||p.inv>0)continue;
+      if(Math.hypot(p.x-boss.x,p.y-boss.y)<110)killPlayer(p,2,null);
+    }
+    for(let k=0;k<12;k++){
+      particles.push({x:boss.x,y:boss.y,vx:(Math.random()-0.5)*300,vy:(Math.random()-0.5)*300,
+        r:4+Math.random()*5,life:0.5,team:2});
+    }
+    beep(120,0.25,0.1,"sawtooth");
+  }
+}
+
+// ================= ボットの頭脳 =================
+function botThink(p,dt){
+  p.thinkT-=dt;
+  if(p.thinkT<=0){
+    p.thinkT=0.7+Math.random()*1.1;
+    let best=null;
+    if(gameMode==="boss"&&boss){
+      // ボスの近くをうろついて撃つ
+      const a=Math.random()*Math.PI*2,d=170+Math.random()*120;
+      best={tx:boss.x+Math.cos(a)*d,ty:boss.y+Math.sin(a)*d};
+    }else if(gameMode==="zone"&&zone&&Math.random()<0.45){
+      // エリアに寄っていく
+      best={tx:zone.x+Math.random()*zone.w,ty:zone.y+Math.random()*zone.h};
+    }else if(gameMode==="item"&&items.length>0&&Math.random()<0.35){
+      const it=items[Math.floor(Math.random()*items.length)];
+      best={tx:it.x,ty:it.y};
+    }else{
+      for(let i=0;i<12;i++){
+        const tx=40+Math.random()*(WORLD_W-80);
+        const ty=40+Math.random()*(WORLD_H-80);
+        if(groundOwner(tx,ty)!==p.team){best={tx,ty};break;}
+        if(!best)best={tx,ty};
+      }
+    }
+    p.tx=Math.max(30,Math.min(WORLD_W-30,best.tx));
+    p.ty=Math.max(30,Math.min(WORLD_H-30,best.ty));
+    const ew=effWeapon(p);
+    if(Math.random()<0.65&&p.ink>ew.cost+8)fire(p);
+    if(p.sp>=100&&Math.random()<0.5)useSpecial(p);
+  }
+  // ボスモードではボスの方を向いて撃つ
+  if(gameMode==="boss"&&boss&&Math.hypot(boss.x-p.x,boss.y-p.y)<320){
+    const dx=boss.x-p.x,dy=boss.y-p.y,d=Math.hypot(dx,dy)||1;
+    p.dirX=dx/d;p.dirY=dy/d;
+    const ew=effWeapon(p);
+    if(p.ink>ew.cost)fire(p);
+    return;
+  }
+  const dx=p.tx-p.x,dy=p.ty-p.y,d=Math.hypot(dx,dy);
+  if(d>12){p.dirX=dx/d;p.dirY=dy/d;}else{p.dirX=0;p.dirY=0;}
+}
+
+// ================= 移動・ギミック =================
+function collideRect(nx,ny,r,o){
+  const cx=Math.max(o.x,Math.min(o.x+o.w,nx));
+  const cy=Math.max(o.y,Math.min(o.y+o.h,ny));
+  const ddx=nx-cx,ddy=ny-cy,dd=Math.hypot(ddx,ddy);
+  if(dd<r){
+    if(dd>0)return {x:cx+ddx/dd*r,y:cy+ddy/dd*r};
+    return null;
+  }
+  return {x:nx,y:ny};
+}
+function moveChar(p,dt){
+  const w=WEAPONS[p.wpn];
+  let sp=p.baseSpeed*w.moveMul;
+  if(p.buffs.fast>0)sp*=1.5;
+  const own=groundOwner(p.x,p.y);
+  if(own===p.team)sp*=1.3;
+  else if(own!==0)sp*=0.55;
+  // スピード床
+  for(const s of speedPads){
+    if(p.x>s.x&&p.x<s.x+s.w&&p.y>s.y&&p.y<s.y+s.h){sp*=1.6;break;}
+  }
+  let nx=p.x+p.dirX*sp*dt,ny=p.y+p.dirY*sp*dt;
+  nx=Math.max(p.r,Math.min(WORLD_W-p.r,nx));
+  ny=Math.max(p.r,Math.min(WORLD_H-p.r,ny));
+  for(const o of obstacles){
+    const res=collideRect(nx,ny,p.r,o);
+    if(res===null){nx=p.x;ny=p.y;break;}
+    nx=res.x;ny=res.y;
+  }
+  for(const mw of movingWalls){
+    const res=collideRect(nx,ny,p.r,mw);
+    if(res===null){nx=p.x;ny=p.y;break;}
+    nx=res.x;ny=res.y;
+  }
+  const moved=Math.hypot(nx-p.x,ny-p.y)>0.5;
+  p.x=nx;p.y=ny;
+  let trailR=w.trailR;
+  if(p.buffs.big>0)trailR*=1.5;
+  if(moved)splat(p.x,p.y,trailR,p.team,p);
+  // ワープ穴
+  if(p.warpCd>0)p.warpCd-=dt;
+  else if(warps.length===2){
+    for(let i=0;i<2;i++){
+      if(Math.hypot(p.x-warps[i].x,p.y-warps[i].y)<22){
+        const dst=warps[1-i];
+        p.x=dst.x;p.y=dst.y;p.warpCd=2;
+        for(let k=0;k<8;k++){
+          particles.push({x:dst.x,y:dst.y,vx:(Math.random()-0.5)*220,vy:(Math.random()-0.5)*220,
+            r:3+Math.random()*4,life:0.4,team:p.team});
+        }
+        if(p.isHuman)beep(740,0.12,0.08);
+        break;
+      }
+    }
+  }
+}
+function refillInk(p,dt){
+  const own=groundOwner(p.x,p.y);
+  if(own===p.team)p.ink+=34*dt;
+  else if(own===0)p.ink+=8*dt;
+  if(p.ink>100)p.ink=100;
+}
+function updateGimmicks(dt){
+  // うごく壁
+  for(const mw of movingWalls){
+    mw.x+=mw.vx*dt;
+    if(mw.x<mw.minX){mw.x=mw.minX;mw.vx*=-1;}
+    if(mw.x>mw.maxX){mw.x=mw.maxX;mw.vx*=-1;}
+  }
+  // ふんすい
+  for(const f of fountains){
+    f.t-=dt;
+    if(f.t<=0){
+      f.t=3;
+      const team=Math.random()<0.5?1:2;
+      for(let i=0;i<4;i++){
+        const a=Math.random()*Math.PI*2,d=30+Math.random()*70;
+        splat(f.x+Math.cos(a)*d,f.y+Math.sin(a)*d,22,team);
+      }
+    }
+  }
+  // アイテム出現（アイテムバトルのみ）
+  if(gameMode==="item"){
+    itemSpawnT-=dt;
+    if(itemSpawnT<=0&&items.length<4){
+      itemSpawnT=4.5;
+      for(let t=0;t<40;t++){
+        const ix=80+Math.random()*(WORLD_W-160);
+        const iy=200+Math.random()*(WORLD_H-400);
+        if(rectFree(ix-16,iy-16,32,32,20)){
+          items.push({x:ix,y:iy,type:ITEM_TYPES[Math.floor(Math.random()*ITEM_TYPES.length)]});
+          break;
+        }
+      }
+    }
+    // 取得判定
+    for(let i=items.length-1;i>=0;i--){
+      const it=items[i];
+      let taken=false;
+      for(const p of players){
+        if(p.dead)continue;
+        if(Math.hypot(p.x-it.x,p.y-it.y)<p.r+14){
+          p.buffs[it.type.key]=8;
+          if(p.isHuman){beep(660,0.1,0.08);beep(990,0.15,0.08);}
+          for(let k=0;k<6;k++){
+            particles.push({x:it.x,y:it.y,vx:(Math.random()-0.5)*180,vy:(Math.random()-0.5)*180,
+              r:3,life:0.35,team:p.team});
+          }
+          taken=true;break;
+        }
+      }
+      if(taken)items.splice(i,1);
+    }
+  }
+  // バフ時間経過
+  for(const p of players){
+    for(const k in p.buffs)if(p.buffs[k]>0)p.buffs[k]-=dt;
+  }
+}
+
+// ================= 集計 =================
+const sharePink=document.getElementById("sharePink");
+function countInk(){
+  let c1=0,c2=0;
+  for(let i=0;i<grid.length;i++){
+    if(grid[i]===1)c1++;else if(grid[i]===2)c2++;
+  }
+  const painted=c1+c2;
+  sharePink.style.width=(painted===0?50:(c1/painted*100))+"%";
+  return {p1:c1/paintableTotal*100,p2:c2/paintableTotal*100};
+}
+function countZone(){
+  if(!zone)return 0;
+  let z1=0,z2=0;
+  const gx0=Math.floor(zone.x/CELL),gx1=Math.floor((zone.x+zone.w)/CELL);
+  const gy0=Math.floor(zone.y/CELL),gy1=Math.floor((zone.y+zone.h)/CELL);
+  for(let gy=gy0;gy<=gy1;gy++)for(let gx=gx0;gx<=gx1;gx++){
+    if(gx<0||gy<0||gx>=cols||gy>=rows)continue;
+    const v=grid[gy*cols+gx];
+    if(v===1)z1++;else if(v===2)z2++;
+  }
+  const tot=(gx1-gx0+1)*(gy1-gy0+1);
+  if(z1>tot*0.5)return 1;
+  if(z2>tot*0.5)return 2;
+  return 0;
+}
+
+// ================= ゲーム中ランキング =================
+const liveRank=document.getElementById("liveRank");
+function updateLiveRank(){
+  const arr=[...players].sort((a,b)=>b.paintPts-a.paintPts);
+  let h="";
+  arr.forEach((p,i)=>{
+    h+='<div class="lrow'+(p.isHuman?" me":"")+'">'
+      +'<span class="dot" style="background:'+COLORS[p.team]+'"></span>'
+      +(i+1)+'位 '+p.name+' <b>'+Math.floor(p.paintPts)+'</b></div>';
+  });
+  liveRank.innerHTML=h;
+}
+
+// ================= ミニマップ =================
+const mm=document.getElementById("minimap");
+const mmCtx=mm.getContext("2d");
+function setupMinimap(){
+  const mw=84;
+  mm.width=mw;mm.height=Math.round(mw*WORLD_H/WORLD_W);
+}
+function drawMinimap(){
+  mmCtx.fillStyle="#241f4a";
+  mmCtx.fillRect(0,0,mm.width,mm.height);
+  mmCtx.drawImage(inkCanvas,0,0,WORLD_W,WORLD_H,0,0,mm.width,mm.height);
+  const sx=mm.width/WORLD_W,sy=mm.height/WORLD_H;
+  if(zone){
+    mmCtx.strokeStyle="#ffcf3d";mmCtx.lineWidth=1;
+    mmCtx.strokeRect(zone.x*sx,zone.y*sy,zone.w*sx,zone.h*sy);
+  }
+  for(const p of players){
+    if(p.dead)continue;
+    mmCtx.fillStyle=p.isHuman?"#ffe14d":COLORS[p.team];
+    mmCtx.beginPath();mmCtx.arc(p.x*sx,p.y*sy,p.isHuman?3.4:2.4,0,Math.PI*2);mmCtx.fill();
+    if(p.isHuman){mmCtx.strokeStyle="#000";mmCtx.lineWidth=1;mmCtx.stroke();}
+  }
+  if(boss&&boss.hp>0){
+    mmCtx.fillStyle="#a855f7";
+    mmCtx.beginPath();mmCtx.arc(boss.x*sx,boss.y*sy,4.5,0,Math.PI*2);mmCtx.fill();
+  }
+  mmCtx.strokeStyle="rgba(255,255,255,.7)";
+  mmCtx.lineWidth=1;
+  mmCtx.strokeRect(camX*sx,camY*sy,W*sx,H*sy);
+}
+
+// ================= 描画 =================
+function drawChar(p){
+  if(p.dead)return;
+  ctx.save();
+  if(p.inv>0&&Math.floor(gameTime*10)%2===0)ctx.globalAlpha=0.35;
+  const moving=p.dirX||p.dirY;
+  const bob=moving?Math.sin(gameTime*14+p.x)*2:0;
+  const big=p.buffs.big>0?1.25:1;
+  ctx.translate(p.x,p.y);
+  ctx.scale(big,big);
+  ctx.fillStyle="rgba(0,0,0,.3)";
+  ctx.beginPath();ctx.ellipse(0,p.r*0.7,p.r*0.9,p.r*0.4,0,0,Math.PI*2);ctx.fill();
+  ctx.translate(0,-4+bob);
+  ctx.fillStyle=COLORS[p.team];
+  ctx.strokeStyle=COLORS_DARK[p.team];
+  ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+  const ang=Math.atan2(p.dirY||(p.team===1?-1:1),p.dirX||0.0001);
+  ctx.beginPath();ctx.arc(Math.cos(ang)*4,Math.sin(ang)*4,p.r*0.55,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.35)";
+  ctx.beginPath();ctx.arc(-p.r*0.35,-p.r*0.45,p.r*0.3,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#fff";
+  ctx.beginPath();ctx.arc(-5,-3,4.5,0,Math.PI*2);ctx.arc(5,-3,4.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#222";
+  ctx.beginPath();ctx.arc(-4,-3,2.2,0,Math.PI*2);ctx.arc(6,-3,2.2,0,Math.PI*2);ctx.fill();
+  // バフ中はキラキラ
+  if(p.buffs.rapid>0||p.buffs.big>0||p.buffs.fast>0||p.buffs.inf>0){
+    ctx.fillStyle="rgba(255,225,80,.9)";
+    const a2=gameTime*6;
+    ctx.beginPath();ctx.arc(Math.cos(a2)*p.r*1.4,Math.sin(a2)*p.r*1.4,3,0,Math.PI*2);ctx.fill();
+  }
+  if(p.isHuman){
+    ctx.fillStyle="#ffe14d";ctx.font="bold 11px sans-serif";ctx.textAlign="center";
+    ctx.fillText("YOU",0,-p.r-10);
+  }
+  ctx.restore();
+}
+function drawBoss(){
+  if(!boss||boss.hp<=0)return;
+  ctx.save();
+  ctx.translate(boss.x,boss.y);
+  const bob=Math.sin(gameTime*4)*4;
+  ctx.fillStyle="rgba(0,0,0,.35)";
+  ctx.beginPath();ctx.ellipse(0,boss.r*0.75,boss.r*1.05,boss.r*0.4,0,0,Math.PI*2);ctx.fill();
+  ctx.translate(0,-10+bob);
+  ctx.fillStyle="#21e6c1";
+  ctx.strokeStyle="#0f9e86";
+  ctx.lineWidth=5;
+  ctx.beginPath();ctx.arc(0,0,boss.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+  // ツノ
+  ctx.fillStyle="#a855f7";
+  ctx.beginPath();ctx.moveTo(-boss.r*0.5,-boss.r*0.7);ctx.lineTo(-boss.r*0.3,-boss.r*1.25);ctx.lineTo(-boss.r*0.12,-boss.r*0.8);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(boss.r*0.5,-boss.r*0.7);ctx.lineTo(boss.r*0.3,-boss.r*1.25);ctx.lineTo(boss.r*0.12,-boss.r*0.8);ctx.closePath();ctx.fill();
+  // おこった目
+  ctx.fillStyle="#fff";
+  ctx.beginPath();ctx.arc(-16,-8,10,0,Math.PI*2);ctx.arc(16,-8,10,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#d31f4c";
+  ctx.beginPath();ctx.arc(-14,-8,5,0,Math.PI*2);ctx.arc(18,-8,5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="#0f9e86";ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(-26,-24);ctx.lineTo(-6,-16);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(26,-24);ctx.lineTo(6,-16);ctx.stroke();
+  // くち
+  ctx.strokeStyle="#0f9e86";ctx.lineWidth=4;
+  ctx.beginPath();ctx.arc(0,14,12,0.15*Math.PI,0.85*Math.PI);ctx.stroke();
+  ctx.restore();
+}
+function drawObstacle(o,floating){
+  const h=o.hgt;
+  const lift=floating?14:0;
+  ctx.fillStyle="rgba(0,0,0,.28)";
+  ctx.beginPath();ctx.ellipse(o.x+o.w/2,o.y+o.h+4,o.w*0.55,10,0,0,Math.PI*2);ctx.fill();
+  if(!floating){
+    ctx.fillStyle="#2b2555";
+    ctx.fillRect(o.x,o.y,o.w,o.h);
+  }
+  ctx.fillStyle=floating?"#6d5fd0":"#453d7d";
+  ctx.strokeStyle="#141127";
+  ctx.lineWidth=2.5;
+  rr(o.x,o.y-h-lift,o.w,o.h,10);ctx.fill();ctx.stroke();
+  ctx.fillStyle="rgba(255,255,255,.1)";
+  rr(o.x+6,o.y-h-lift+6,o.w-12,10,5);ctx.fill();
+}
+function drawGimmicks(){
+  // スピード床
+  for(const s of speedPads){
+    ctx.fillStyle="rgba(255,207,61,.16)";
+    rr(s.x,s.y,s.w,s.h,12);ctx.fill();
+    ctx.strokeStyle="rgba(255,207,61,.6)";
+    ctx.lineWidth=2;
+    rr(s.x,s.y,s.w,s.h,12);ctx.stroke();
+    ctx.fillStyle="rgba(255,207,61,.8)";
+    ctx.font="bold 22px sans-serif";ctx.textAlign="center";
+    const shift=(gameTime*40)%30;
+    ctx.fillText("≫≫",s.x+s.w/2-15+shift*0.5,s.y+s.h/2+8);
+  }
+  // ワープ穴
+  for(const wp of warps){
+    ctx.save();
+    ctx.translate(wp.x,wp.y);
+    ctx.rotate(gameTime*2);
+    ctx.strokeStyle="#a855f7";
+    ctx.lineWidth=4;
+    ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*1.4);ctx.stroke();
+    ctx.strokeStyle="#d8b4fe";
+    ctx.beginPath();ctx.arc(0,0,10,Math.PI,Math.PI*2.4);ctx.stroke();
+    ctx.restore();
+  }
+  // ふんすい
+  for(const f of fountains){
+    ctx.fillStyle="rgba(0,0,0,.25)";
+    ctx.beginPath();ctx.ellipse(f.x,f.y+14,24,8,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#3b3568";
+    ctx.strokeStyle="#141127";ctx.lineWidth=2.5;
+    rr(f.x-16,f.y-14,32,28,8);ctx.fill();ctx.stroke();
+    const jet=Math.abs(Math.sin(gameTime*3))*10;
+    ctx.fillStyle="rgba(255,255,255,.6)";
+    ctx.beginPath();ctx.arc(f.x,f.y-22-jet,5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(f.x-7,f.y-16-jet*0.6,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(f.x+7,f.y-16-jet*0.6,3,0,Math.PI*2);ctx.fill();
+  }
+  // エリア
+  if(zone){
+    ctx.setLineDash([12,8]);
+    ctx.lineWidth=5;
+    ctx.strokeStyle=zoneOwner===1?COLORS[1]:zoneOwner===2?COLORS[2]:"#ffcf3d";
+    rr(zone.x,zone.y,zone.w,zone.h,18);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle="rgba(255,207,61,.9)";
+    ctx.font="bold 26px sans-serif";ctx.textAlign="center";
+    ctx.fillText("⭐エリア⭐",zone.x+zone.w/2,zone.y-14);
+  }
+  // アイテム
+  for(const it of items){
+    const bob=Math.sin(gameTime*4+it.x)*4;
+    ctx.fillStyle="rgba(0,0,0,.25)";
+    ctx.beginPath();ctx.ellipse(it.x,it.y+12,12,5,0,0,Math.PI*2);ctx.fill();
+    ctx.font="26px sans-serif";ctx.textAlign="center";
+    ctx.fillText(it.type.e,it.x,it.y+8-bob);
+  }
+}
+function drawSpawnPad(x,y,team){
+  ctx.strokeStyle=COLORS[team];
+  ctx.lineWidth=3;
+  ctx.setLineDash([8,6]);
+  ctx.beginPath();ctx.ellipse(x,y,42,26,0,0,Math.PI*2);ctx.stroke();
+  ctx.setLineDash([]);
+}
+function rr(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function render(){
+  const me=players[0];
+  camX=Math.max(0,Math.min(WORLD_W-W,me.x-W/2));
+  camY=Math.max(0,Math.min(WORLD_H-H,me.y-H/2));
+
+  ctx.fillStyle="#241f4a";
+  ctx.fillRect(0,0,W,H);
+  ctx.save();
+  ctx.translate(-camX,-camY);
+
+  ctx.strokeStyle="rgba(255,255,255,.05)";
+  ctx.lineWidth=1;
+  const step=CELL*3;
+  for(let x=Math.floor(camX/step)*step;x<camX+W+step;x+=step){
+    ctx.beginPath();ctx.moveTo(x,camY);ctx.lineTo(x,camY+H);ctx.stroke();
+  }
+  for(let y=Math.floor(camY/step)*step;y<camY+H+step;y+=step){
+    ctx.beginPath();ctx.moveTo(camX,y);ctx.lineTo(camX+W,y);ctx.stroke();
+  }
+
+  ctx.drawImage(inkCanvas,camX,camY,W,H,camX,camY,W,H);
+
+  ctx.strokeStyle="rgba(255,255,255,.35)";
+  ctx.lineWidth=4;
+  ctx.strokeRect(2,2,WORLD_W-4,WORLD_H-4);
+
+  drawGimmicks();
+  for(const p of players)drawSpawnPad(p.spawnX,p.spawnY,p.team);
+
+  for(const b of projectiles){
+    ctx.fillStyle="rgba(0,0,0,.25)";
+    ctx.beginPath();ctx.ellipse(b.x,b.y+4,7,3.5,0,0,Math.PI*2);ctx.fill();
+  }
+
+  const drawList=[];
+  for(const o of obstacles)drawList.push({y:o.y+o.h,f:()=>drawObstacle(o,false)});
+  for(const mw of movingWalls)drawList.push({y:mw.y+mw.h,f:()=>drawObstacle(mw,true)});
+  for(const p of players)drawList.push({y:p.y+p.r,f:()=>drawChar(p)});
+  if(boss&&boss.hp>0)drawList.push({y:boss.y+boss.r,f:()=>drawBoss()});
+  drawList.sort((a,b)=>a.y-b.y);
+  for(const d of drawList)d.f();
+
+  for(const b of projectiles){
+    let hop=0;
+    if(b.lob){
+      const prog=1-(b.life/b.maxLife);
+      hop=Math.sin(prog*Math.PI)*60;
+    }
+    ctx.fillStyle=COLORS[b.team];
+    ctx.beginPath();ctx.arc(b.x,b.y-hop,b.lob?11:8,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,.4)";
+    ctx.beginPath();ctx.arc(b.x-2,b.y-hop-2,3,0,Math.PI*2);ctx.fill();
+  }
+  for(const pt of particles){
+    ctx.globalAlpha=Math.max(0,pt.life*2);
+    ctx.fillStyle=COLORS[pt.team];
+    ctx.beginPath();ctx.arc(pt.x,pt.y,pt.r,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+  }
+  ctx.restore();
+}
+
+// ================= メインループ =================
+const timerEl=document.getElementById("timer");
+const inkFill=document.getElementById("inkFill");
+const inkWrap=document.getElementById("inkWrap");
+const deadMsg=document.getElementById("deadMsg");
+const rushBanner=document.getElementById("rushBanner");
+const buffTxt=document.getElementById("buffTxt");
+const zoneTxt=document.getElementById("zoneTxt");
+const bossBarFill=document.getElementById("bossBarFill");
+const spPct=document.getElementById("spPct");
+let mmTimer=0;
+function loop(t){
+  if(!running)return;
+  const dt=Math.min(0.05,(t-lastTime)/1000)||0.016;
+  lastTime=t;gameTime+=dt;
+
+  timeLeft-=dt;
+  timerEl.textContent=Math.max(0,Math.ceil(timeLeft));
+  if(timeLeft<=0){endGame();return;}
+
+  // ラッシュ発動
+  if((gameMode==="rush")&&!rushActive&&timeLeft<=15){
+    rushActive=true;rushShownT=2.5;
+    rushBanner.classList.remove("hidden");
+    beep(660,0.1,0.1);beep(880,0.1,0.1);beep(1100,0.2,0.1);
+  }
+  if(rushShownT>0){
+    rushShownT-=dt;
+    if(rushShownT<=0)rushBanner.classList.add("hidden");
+  }
+
+  const me=players[0];
+
+  for(const p of players){
+    if(p.inv>0)p.inv-=dt;
+    if(p.dead){
+      p.respawnT-=dt;
+      if(p.respawnT<=0)respawn(p);
+    }
+  }
+
+  if(!me.dead){
+    let mx=input.mx,my=input.my;
+    if(keys["w"]||keys["ArrowUp"])my=-1;
+    if(keys["s"]||keys["ArrowDown"])my=1;
+    if(keys["a"]||keys["ArrowLeft"])mx=-1;
+    if(keys["d"]||keys["ArrowRight"])mx=1;
+    if(mx||my){const d=Math.hypot(mx,my);me.dirX=mx/d;me.dirY=my/d;}
+    else{me.dirX=0;me.dirY=0;}
+    if(input.firing)fire(me);
+  }
+
+  for(let i=1;i<players.length;i++){
+    if(!players[i].dead)botThink(players[i],dt);
+  }
+  for(const p of players){
+    if(p.dead)continue;
+    if(p.fireCd>0)p.fireCd-=dt;
+    if(p.dirX||p.dirY)moveChar(p,dt);
+    refillInk(p,dt);
+    p.sp=Math.min(100,p.sp+0.5*dt); // 2秒に1%ずつたまる
+  }
+
+  updateBoss(dt);
+  updateGimmicks(dt);
+
+  // エリア争奪の判定
+  if(gameMode==="zone"){
+    if(zoneOwner!==0)zoneHold[zoneOwner]+=dt;
+    zoneTxt.innerHTML='⭐キープ時間　<span class="p">ピンク '+zoneHold[1].toFixed(0)+'秒</span> ／ <span class="m">ミント '+zoneHold[2].toFixed(0)+'秒</span>（30秒で勝ち！）';
+    if(zoneHold[1]>=30){endGame(1);return;}
+    if(zoneHold[2]>=30){endGame(2);return;}
+  }
+
+  // 弾の処理
+  for(let i=projectiles.length-1;i>=0;i--){
+    const b=projectiles[i];
+    b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
+    if(b.line)splat(b.x,b.y,10,b.team,b.owner);
+
+    let killed=false;
+    if(!b.lob){
+      for(const p of players){
+        if(p.team===b.team||p.dead||p.inv>0)continue;
+        if(Math.hypot(b.x-p.x,b.y-p.y)<p.r+8){
+          killPlayer(p,b.team,b.owner);
+          killed=true;
+          break;
+        }
+      }
+      // ボスへのヒット
+      if(!killed&&boss&&boss.hp>0&&b.team===1){
+        if(Math.hypot(b.x-boss.x,b.y-boss.y)<boss.r+8){
+          damageBoss(b.pr*0.13,b.owner);
+          killed=true;
+        }
+      }
+    }
+    let hit=killed||b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H;
+    if(!hit&&!b.lob){
+      for(const o of obstacles){
+        if(b.x>o.x&&b.x<o.x+o.w&&b.y>o.y&&b.y<o.y+o.h){hit=true;break;}
+      }
+      if(!hit)for(const mw of movingWalls){
+        if(b.x>mw.x&&b.x<mw.x+mw.w&&b.y>mw.y&&b.y<mw.y+mw.h){hit=true;break;}
+      }
+    }
+    if(hit){
+      if(!running)break;
+      splat(b.x,b.y,b.pr,b.team,b.owner);
+      if(b.lob){
+        for(const p of players){
+          if(p.team===b.team||p.dead||p.inv>0)continue;
+          if(Math.hypot(b.x-p.x,b.y-p.y)<b.pr)killPlayer(p,b.team,b.owner);
+        }
+        if(boss&&boss.hp>0&&b.team===1&&Math.hypot(b.x-boss.x,b.y-boss.y)<b.pr+boss.r)damageBoss(b.pr*0.13,b.owner);
+      }
+      const n=Math.min(8,3+Math.floor(b.pr/12));
+      for(let k=0;k<n;k++){
+        particles.push({x:b.x,y:b.y,vx:(Math.random()-0.5)*200,vy:(Math.random()-0.5)*200,
+          r:3+Math.random()*4,life:0.4,team:b.team});
+      }
+      if(Math.hypot(b.x-me.x,b.y-me.y)<250)beep(b.pr>45?140:190,0.1,0.05,"triangle");
+      projectiles.splice(i,1);
+    }
+  }
+  if(!running)return;
+  for(let i=particles.length-1;i>=0;i--){
+    const pt=particles[i];
+    pt.x+=pt.vx*dt;pt.y+=pt.vy*dt;pt.life-=dt;
+    if(pt.life<=0)particles.splice(i,1);
+  }
+
+  countTimer-=dt;
+  if(countTimer<=0){
+    countTimer=0.5;countInk();
+    if(gameMode==="zone")zoneOwner=countZone();
+    updateLiveRank();
+  }
+
+  // HUD更新
+  inkFill.style.width=me.ink+"%";
+  const ew=effWeapon(me);
+  const empty=me.ink<ew.cost;
+  inkWrap.classList.toggle("empty",empty);
+  fireBtn.classList.toggle("empty",empty);
+  spPct.textContent=Math.floor(me.sp)+"%";
+  spBtn.classList.toggle("ready",me.sp>=100);
+  spBtn.classList.toggle("charging",me.sp<100);
+  if(boss)bossBarFill.style.width=Math.max(0,boss.hp/boss.maxHp*100)+"%";
+
+  // バフ表示
+  let bt="";
+  for(const it of ITEM_TYPES){
+    if(me.buffs[it.key]>0)bt+=it.e+Math.ceil(me.buffs[it.key])+" ";
+  }
+  buffTxt.textContent=bt;
+
+  if(me.dead){
+    deadMsg.classList.remove("hidden");
+    deadMsg.textContent="やられた〜！ ふっかつまで "+Math.ceil(me.respawnT);
+  }else{
+    deadMsg.classList.add("hidden");
+  }
+
+  render();
+  mmTimer-=dt;
+  if(mmTimer<=0){mmTimer=0.15;drawMinimap();}
+
+  requestAnimationFrame(loop);
+}
+
+// ================= 開始・終了 =================
+const startOverlay=document.getElementById("startOverlay");
+const endOverlay=document.getElementById("endOverlay");
+const hud=document.getElementById("hud");
+const inkLabel=document.getElementById("inkLabel");
+const shareBar=document.getElementById("shareBar");
+const bossLabel=document.getElementById("bossLabel");
+const bossBarWrap=document.getElementById("bossBarWrap");
+function startGame(){
+  setupStage();
+  setupPlayers();
+  setupMinimap();
+  const w=WEAPONS[myWeapon];
+  fireBtn.querySelector(".em").textContent=w.emoji;
+  timeLeft=180;countTimer=0;gameTime=0;
+  rushActive=false;rushShownT=0;itemSpawnT=1.5;
+  liveRank.innerHTML="";
+  scoreSaved=false;
+  const ssb=document.getElementById("saveScoreBtn");
+  ssb.disabled=false;ssb.textContent="とうろく";
+  startOverlay.classList.add("hidden");
+  endOverlay.style.display="none";
+  hud.classList.remove("hidden");
+  fireBtn.classList.remove("hidden");
+  spBtn.classList.remove("hidden");
+  inkWrap.classList.remove("hidden");
+  inkLabel.classList.remove("hidden");
+  deadMsg.classList.add("hidden");
+  rushBanner.classList.add("hidden");
+  shareBar.classList.toggle("hidden",gameMode==="boss");
+  zoneTxt.classList.toggle("hidden",gameMode!=="zone");
+  bossLabel.classList.toggle("hidden",gameMode!=="boss");
+  bossBarWrap.classList.toggle("hidden",gameMode!=="boss");
+  running=true;lastTime=performance.now();
+  beep(660,0.15,0.08);beep(880,0.2,0.08);
+  requestAnimationFrame(loop);
+}
+function endGame(winnerOverride){
+  if(!running)return;
+  running=false;
+  const me=players[0];
+  const r=countInk();
+  const resultTxt=document.getElementById("resultTxt");
+  const pctTxt=document.getElementById("pctTxt");
+  let winner;
+  if(winnerOverride!==undefined)winner=winnerOverride;
+  else if(gameMode==="zone")winner=zoneHold[1]>zoneHold[2]?1:zoneHold[2]>zoneHold[1]?2:0;
+  else if(gameMode==="boss")winner=2; // 時間切れ＝逃げられた
+  else winner=r.p1>r.p2?1:r.p2>r.p1?2:0;
+
+  if(gameMode==="boss"){
+    if(winner===1){resultTxt.textContent="ボスをたおした！🎉";resultTxt.className="win";}
+    else{resultTxt.textContent="にげられた…😱";resultTxt.className="lose";}
+    pctTxt.innerHTML="";
+  }else{
+    if(winner===1){resultTxt.textContent="ピンクの勝ち！🎉";resultTxt.className="win";beep(660,0.2,0.1);beep(990,0.3,0.1);}
+    else if(winner===2){resultTxt.textContent="まけちゃった…";resultTxt.className="lose";beep(300,0.3,0.08);}
+    else{resultTxt.textContent="ひきわけ！";resultTxt.className="draw";}
+    if(gameMode==="zone"){
+      pctTxt.innerHTML='<span class="p">ピンク '+zoneHold[1].toFixed(0)+'秒</span>　vs　<span class="m">ミント '+zoneHold[2].toFixed(0)+'秒</span>';
+    }else{
+      pctTxt.innerHTML='<span class="p">ピンク '+r.p1.toFixed(1)+'%</span>　vs　<span class="m">ミント '+r.p2.toFixed(1)+'%</span>';
+    }
+  }
+  document.getElementById("statsTxt").innerHTML=
+    "🏅 あなたのせいせき<br>💥たおした "+me.kills+"回　💀やられた "+me.deaths+"回<br>🎨ぬりポイント "+Math.floor(me.paintPts)
+    +"<br>⭐スコア "+calcScore(me);
+  lastScore=calcScore(me);
+  document.getElementById("saveScoreBtn").disabled=false;
+  loadRanking();
+  hud.classList.add("hidden");
+  fireBtn.classList.add("hidden");
+  spBtn.classList.add("hidden");
+  inkWrap.classList.add("hidden");
+  inkLabel.classList.add("hidden");
+  deadMsg.classList.add("hidden");
+  rushBanner.classList.add("hidden");
+  buffTxt.textContent="";
+  endOverlay.style.display="flex";
+}
+document.getElementById("startBtn").addEventListener("click",startGame);
+document.getElementById("retryBtn").addEventListener("click",startGame);
+
+// ================= オンラインランキング =================
+let lastScore=0,scoreSaved=false;
+const rankList=document.getElementById("rankList");
+const nameInput=document.getElementById("nameInput");
+const saveScoreBtn=document.getElementById("saveScoreBtn");
+const MODE_EMOJI={turf:"🎨",item:"💊",zone:"⭐",boss:"👹",rush:"🔥"};
+function calcScore(p){
+  return Math.floor(p.paintPts)+p.kills*100;
+}
+function hasStorage(){
+  return typeof window.storage!=="undefined"&&window.storage&&window.storage.get;
+}
+async function getRankingData(){
+  let list=[];
+  try{
+    const res=await window.storage.get("ranking-v1",true);
+    if(res&&res.value)list=JSON.parse(res.value);
+  }catch(e){/* まだ誰も登録してない */}
+  if(!Array.isArray(list))list=[];
+  return list;
+}
+function renderRanking(list,myName){
+  if(list.length===0){
+    rankList.innerHTML="まだだれも登録してないよ。1位になるチャンス！";
+    return;
+  }
+  const medals=["🥇","🥈","🥉"];
+  let h="";
+  list.slice(0,10).forEach((r,i)=>{
+    const cls=(myName&&r.name===myName)?' class="rme"':'';
+    h+="<div"+cls+">"+(medals[i]||(i+1)+"位")+" "
+      +(MODE_EMOJI[r.mode]||"")+" "+escapeHtml(r.name)+"　<b>"+r.score+"</b></div>";
+  });
+  rankList.innerHTML=h;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+async function loadRanking(){
+  if(!hasStorage()){
+    rankList.textContent="この環境ではオンラインランキングが使えないみたい🙏（ローカルで遊ぶときはスコアだけ楽しんでね）";
+    saveScoreBtn.disabled=true;
+    return;
+  }
+  rankList.textContent="よみこみ中…";
+  const list=await getRankingData();
+  renderRanking(list);
+}
+async function saveScore(){
+  if(scoreSaved||!hasStorage())return;
+  const name=(nameInput.value.trim()||"なまえなし").slice(0,10);
+  saveScoreBtn.disabled=true;
+  saveScoreBtn.textContent="ほぞん中…";
+  try{
+    const list=await getRankingData();
+    list.push({name:name,score:lastScore,mode:gameMode,date:Date.now()});
+    list.sort((a,b)=>b.score-a.score);
+    const trimmed=list.slice(0,30);
+    await window.storage.set("ranking-v1",JSON.stringify(trimmed),true);
+    scoreSaved=true;
+    saveScoreBtn.textContent="とうろく済み✓";
+    renderRanking(trimmed,name);
+    beep(660,0.1,0.08);beep(990,0.15,0.08);
+  }catch(e){
+    saveScoreBtn.disabled=false;
+    saveScoreBtn.textContent="とうろく";
+    rankList.textContent="保存に失敗しちゃった…もう一回ためしてみて！";
+  }
+}
+saveScoreBtn.addEventListener("click",saveScore);
 })();
 </script>
 </body>
