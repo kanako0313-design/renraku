@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>楽楽連絡</title>
 <meta name="apple-mobile-web-app-title" content="楽楽連絡">
-<link rel="apple-touch-icon" href="IMG_4280.png">
+<link rel="apple-touch-icon" href="icon.png">
 <style>
   :root{
     --teal:#0f766e; --amber:#E8A33D; --amber-ink:#B87415;
@@ -123,12 +123,6 @@
   .photo{max-width:220px;border-radius:16px;display:block;box-shadow:0 1px 3px rgba(36,51,48,.12);background:#e8ebe4}
   .seen{font-size:10px;color:#8b968f;margin:3px 4px 0;line-height:1.5;max-width:200px}
   .row.mine .seen{text-align:right}
-  .tabbar{position:fixed;bottom:0;left:0;right:0;display:flex;gap:0;background:var(--paper);border-top:1px solid var(--line);z-index:100;padding:0}
-  .tabbar button{flex:1;padding:12px 0;border:none;background:none;color:var(--muted);cursor:pointer;font-family:var(--round);font-size:13px;font-weight:600}
-  .tabbar button.on{color:var(--teal)}
-  #chatBox{display:flex;flex-direction:column;height:calc(100vh - 60px);overflow:auto}
-  #gameBox{display:none;height:calc(100vh - 60px);overflow:auto;padding:16px}
-  #settingsBox{display:none;height:calc(100vh - 60px);overflow:auto;padding:16px}
   .memberline button{color:inherit;text-decoration:underline;padding:0 2px;font-size:11px}
   .room-item .dot.dm{background:#FDE7EF;color:#C2447A}
   .room-item .badge{background:#D64545;color:#fff;font-size:11px;font-weight:600;min-width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 6px;flex-shrink:0}
@@ -231,164 +225,6 @@ const MAX_MSGS = 120;
 const MAX_REC_SEC = 10;
 
 const app = document.getElementById("app");
-
-/* ===== タブ切り替え ===== */
-
-/* ===== ゲームボックスを初期化 ===== */
-
-/* ===== 設定ボックスを初期化 ===== */
-
-/* ===== プロフ編集ダイアログ ===== */
-function showProfileEdit() {
-  const veil = el("div", "veil");
-  const sheet = el("div", "sheet");
-  sheet.appendChild(el("h2", null, "プロフィール編集"));
-  
-  const nameLbl = el("p", "small", "名前");
-  sheet.appendChild(nameLbl);
-  const nameInp = document.createElement("input");
-  nameInp.type = "text";
-  nameInp.value = me.name || "";
-  nameInp.style.cssText = "width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;margin-bottom:12px";
-  sheet.appendChild(nameInp);
-  
-  const emojiLbl = el("p", "small", "アイコン（絵文字）");
-  sheet.appendChild(emojiLbl);
-  const emojiInp = document.createElement("input");
-  emojiInp.type = "text";
-  emojiInp.value = me.avatar || "🙂";
-  emojiInp.style.cssText = "width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;margin-bottom:16px";
-  sheet.appendChild(emojiInp);
-  
-  const saveBtn = el("button", "primary", "保存");
-  saveBtn.style.marginBottom = "8px";
-  saveBtn.onclick = async () => {
-    if (!nameInp.value.trim()) { fail("名前を入力してね"); return; }
-    me.name = nameInp.value;
-    me.avatar = emojiInp.value || "🙂";
-    try { store("user", me); } catch(e) {}
-    await Promise.all(Object.keys(members).map(uid => 
-      fb.update(`rooms/${current}/members/${me.uid}`, { name: me.name, avatar: me.avatar })
-    ));
-    veil.remove();
-    initSettingsBox();
-    toast("保存しました!");
-  };
-  sheet.appendChild(saveBtn);
-  
-  const cancelBtn = el("button", "cancel", "キャンセル");
-  cancelBtn.onclick = () => veil.remove();
-  sheet.appendChild(cancelBtn);
-  
-  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
-  veil.appendChild(sheet);
-  app.appendChild(veil);
-}
-
-function initSettingsBox() {
-  const settingsBox = document.getElementById('settingsBox');
-  settingsBox.innerHTML = '';
-  
-  const h2 = document.createElement('h2');
-  h2.style.cssText = 'margin:0 0 16px;font-size:18px;font-family:var(--round)';
-  h2.textContent = '設定';
-  settingsBox.appendChild(h2);
-  
-  // プロフィール編集
-  const profileBtn = document.createElement('button');
-  profileBtn.className = 'primary';
-  profileBtn.style.cssText = 'width:100%;margin-bottom:8px;padding:12px;font-size:15px;text-align:left';
-  profileBtn.innerHTML = '👤 プロフィール編集<br><span style="font-size:12px;color:var(--muted)">名前・アイコンを変更</span>';
-  profileBtn.onclick = showProfileEdit;
-  settingsBox.appendChild(profileBtn);
-  
-  // 区切り線
-  const hr = document.createElement('hr');
-  hr.className = 'sep';
-  settingsBox.appendChild(hr);
-  
-  // フィードバック
-  const feedbackBtn = document.createElement('button');
-  feedbackBtn.className = 'cancel';
-  feedbackBtn.style.cssText = 'width:100%;margin-bottom:8px;padding:12px;font-size:15px';
-  feedbackBtn.textContent = '💌 フィードバック';
-  feedbackBtn.onclick = () => openNote('feedback');
-  settingsBox.appendChild(feedbackBtn);
-  
-  // 通報
-  const reportBtn = document.createElement('button');
-  reportBtn.className = 'cancel';
-  reportBtn.style.cssText = 'width:100%;margin-bottom:8px;padding:12px;font-size:15px';
-  reportBtn.textContent = '🚩 通報';
-  reportBtn.onclick = () => openNote('report');
-  settingsBox.appendChild(reportBtn);
-  
-  // 区切り線
-  const hr2 = document.createElement('hr');
-  hr2.className = 'sep';
-  settingsBox.appendChild(hr2);
-  
-  // ログアウト
-  const logoutBtn = document.createElement('button');
-  logoutBtn.className = 'cancel';
-  logoutBtn.style.cssText = 'width:100%;padding:12px;font-size:15px;color:#d64545';
-  logoutBtn.textContent = '🚪 ログアウト';
-  logoutBtn.onclick = askLogout1;
-  settingsBox.appendChild(logoutBtn);
-}
-
-function initGameBox() {
-  const gameBox = document.getElementById('gameBox');
-  gameBox.innerHTML = '';
-  
-  const h2 = document.createElement('h2');
-  h2.style.cssText = 'margin:0 0 16px;font-size:18px;font-family:var(--round)';
-  h2.textContent = 'ゲームを選ぼう';
-  gameBox.appendChild(h2);
-  
-  const games = [
-    { name: '🏢 ビル経営ゲーム', url: './game.html' },
-    { name: '🎨 イロヌリバトル', url: './game2.html' },
-    { name: '🎨 イロヌリバトル DX3', url: './game3.html' }
-  ];
-  
-  games.forEach(g => {
-    const btn = document.createElement('button');
-    btn.className = 'primary';
-    btn.style.cssText = 'width:100%;margin-bottom:8px;padding:12px;font-size:15px';
-    btn.textContent = g.name;
-    btn.onclick = () => window.open(g.url, '_blank');
-    gameBox.appendChild(btn);
-  });
-  
-  const backBtn = document.createElement('button');
-  backBtn.className = 'cancel';
-  backBtn.style.cssText = 'width:100%;padding:12px;font-size:15px;margin-top:16px';
-  backBtn.textContent = '◀ チャットに戻る';
-  backBtn.onclick = () => switchTab('chat');
-  gameBox.appendChild(backBtn);
-}
-
-function switchTab(tab) {
-  document.getElementById('app').style.display = (tab === 'chat') ? 'flex' : 'none';
-  if (tab === 'game') {
-    document.getElementById('gameBox').style.display = 'block';
-    initGameBox();
-  } else {
-    document.getElementById('gameBox').style.display = 'none';
-  }
-  if (tab === 'settings') {
-    document.getElementById('settingsBox').style.display = 'block';
-    initSettingsBox();
-  } else {
-    document.getElementById('settingsBox').style.display = 'none';
-  }
-  
-  document.querySelectorAll('.tabbar button').forEach(b => {
-    b.classList.toggle('on', b.getAttribute('data-tab') === tab);
-  });
-}
-
 const el = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
 const esc = (s) => (s || "").replace(/[.#$/[\]]/g, "_").slice(0, 30);
 const hhmm = (t) => { const d = new Date(t); return d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0"); };
@@ -722,7 +558,19 @@ function showSetup() {
 
   if (me) {
     card.appendChild(el("hr", "sep"));
-    const fbBtn = el("button", "cancel", "フィードバックを送信する");
+      const gameBtn1 = el("button", "cancel", "🏢 ビル経営ゲーム");
+  gameBtn1.style.marginBottom = "8px";
+  gameBtn1.onclick = () => window.open("./game.html", "_blank");
+  card.appendChild(gameBtn1);
+
+  const gameBtn2 = el("button", "cancel", "🎨 イロヌリバトル");
+  gameBtn2.style.marginBottom = "8px";
+  gameBtn2.onclick = () => window.open("./game2.html", "_blank");
+  card.appendChild(gameBtn2);
+  
+  card.appendChild(el("hr", "sep"));
+
+  const fbBtn = el("button", "cancel", "フィードバックを送信する");
     fbBtn.style.marginBottom = "8px";
     fbBtn.onclick = () => openNote("feedback");
     card.appendChild(fbBtn);
