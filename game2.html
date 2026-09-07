@@ -178,6 +178,104 @@ async function getRanking() {
 }
 </script>
 
+
+<!-- 管理者機能 -->
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCzpAJAmqorxAzplZca57Q9wsO-z6jJ4TY",
+  databaseURL: "https://rakuraku-1e398-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rakuraku-1e398"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let isAdmin = false;
+let adminPanelOpen = false;
+let cheatActive = false;
+let killActive = false;
+let infiniteInk = false;
+
+// 管理者チェック
+async function checkAdmin() {
+  try {
+    const playerName = localStorage.getItem('playerName') || 'プレイヤー';
+    const snapshot = await db.ref('users').orderByChild('name').equalTo(playerName).once('value');
+    const data = snapshot.val();
+    if (data) {
+      Object.values(data).forEach(user => {
+        if (user.adminPass === 'kairi201478') {
+          isAdmin = true;
+          console.log('管理者です');
+        }
+      });
+    }
+  } catch(e) {
+    console.log('管理者チェック失敗:', e);
+  }
+}
+
+// APボタン表示
+function showAdminPanel() {
+  if (!isAdmin) return;
+  const btn = document.createElement('button');
+  btn.id = 'adminBtn';
+  btn.textContent = 'AP';
+  btn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9998;padding:8px 12px;background:#ff3d8a;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer';
+  btn.onclick = toggleAdminPanel;
+  document.body.appendChild(btn);
+}
+
+function toggleAdminPanel() {
+  adminPanelOpen = !adminPanelOpen;
+  const panel = document.getElementById('adminPanel');
+  if (adminPanelOpen && !panel) {
+    createAdminPanel();
+  } else if (panel) {
+    panel.style.display = adminPanelOpen ? 'block' : 'none';
+  }
+}
+
+function createAdminPanel() {
+  const panel = document.createElement('div');
+  panel.id = 'adminPanel';
+  panel.style.cssText = 'position:fixed;top:50px;right:10px;z-index:9999;background:#fff;border:2px solid #ff3d8a;border-radius:8px;padding:12px;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,0.15)';
+  panel.innerHTML = `
+    <div style="font-weight:600;margin-bottom:10px">管理者コマンド</div>
+    <button onclick="toggleCheat()" style="width:100%;padding:8px;margin-bottom:8px;background:${cheatActive?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">🛡️ チート: ${cheatActive?'ON':'OFF'}</button>
+    <button onclick="toggleKill()" style="width:100%;padding:8px;margin-bottom:8px;background:${killActive?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">💀 10秒キル: ${killActive?'ON':'OFF'}</button>
+    <button onclick="toggleInfiniteInk()" style="width:100%;padding:8px;background:${infiniteInk?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">♾️ 無限インク: ${infiniteInk?'ON':'OFF'}</button>
+  `;
+  document.body.appendChild(panel);
+}
+
+function toggleCheat() { cheatActive = !cheatActive; updateAdminPanel(); }
+function toggleKill() { killActive = !killActive; if(killActive) startKillMode(); updateAdminPanel(); }
+function toggleInfiniteInk() { infiniteInk = !infiniteInk; updateAdminPanel(); }
+
+function updateAdminPanel() {
+  const panel = document.getElementById('adminPanel');
+  if (panel) {
+    panel.innerHTML = `
+      <div style="font-weight:600;margin-bottom:10px">管理者コマンド</div>
+      <button onclick="toggleCheat()" style="width:100%;padding:8px;margin-bottom:8px;background:${cheatActive?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">🛡️ チート: ${cheatActive?'ON':'OFF'}</button>
+      <button onclick="toggleKill()" style="width:100%;padding:8px;margin-bottom:8px;background:${killActive?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">💀 10秒キル: ${killActive?'ON':'OFF'}</button>
+      <button onclick="toggleInfiniteInk()" style="width:100%;padding:8px;background:${infiniteInk?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">♾️ 無限インク: ${infiniteInk?'ON':'OFF'}</button>
+    `;
+  }
+}
+
+function startKillMode() {
+  // 10秒後に敵をキル（ゲーム内の敵オブジェクトに対する処理は、ゲーム本体のコード内で実装）
+  console.log('10秒キルモード開始');
+}
+
+// ゲーム開始時に管理者チェック
+checkAdmin();
+setTimeout(showAdminPanel, 500);
+</script>
+
 </head>
 <body>
 <div style="position:fixed;top:10px;left:10px;z-index:9999">
@@ -614,6 +712,7 @@ function respawn(p){
 // ================= ボス =================
 function damageBoss(dmg,by){
   if(!boss||boss.hp<=0)return;
+  if(cheatActive) return; // チート有効なら無視
   boss.hp-=dmg;
   particles.push({x:boss.x,y:boss.y-30,vx:0,vy:-60,r:6,life:0.4,team:1});
   if(boss.hp<=0){
