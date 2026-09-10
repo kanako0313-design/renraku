@@ -131,151 +131,6 @@
   #rankNote{color:rgba(255,255,255,.55);font-size:10px;}
   .hidden{display:none !important;}
 </style>
-
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js"></script>
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyCzpAJAmqorxAzplZca57Q9wsO-z6jJ4TY",
-  databaseURL: "https://rakuraku-1e398-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "rakuraku-1e398"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-// スコアをFirebaseに送信
-async function saveScore(playerName, score) {
-  try {
-    const userId = playerName.replace(/[^a-zA-Z0-9]/g, '_');
-    const ref = db.ref('scores/' + userId);
-    await ref.update({
-      name: playerName,
-      score: score,
-      timestamp: Date.now()
-    });
-    console.log('スコア保存:', playerName, score);
-  } catch (e) {
-    console.error('保存失敗:', e);
-  }
-}
-
-// ランキングを取得
-async function getRanking() {
-  try {
-    const snapshot = await db.ref('scores').orderByChild('score').limitToLast(10).once('value');
-    const data = snapshot.val();
-    if (!data) return [];
-    const ranking = Object.entries(data).map(([id, d]) => ({
-      name: d.name,
-      score: d.score
-    })).sort((a, b) => b.score - a.score);
-    return ranking;
-  } catch (e) {
-    console.error('ランキング取得失敗:', e);
-    return [];
-  }
-}
-</script>
-
-
-<!-- 管理者機能 -->
-<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database.js"></script>
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyCzpAJAmqorxAzplZca57Q9wsO-z6jJ4TY",
-  databaseURL: "https://rakuraku-1e398-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "rakuraku-1e398"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-let isAdmin = false;
-let adminPanelOpen = false;
-let cheatActive = false;
-let killActive = false;
-let infiniteInk = false;
-
-// 管理者チェック
-async function checkAdmin() {
-  try {
-    const playerName = localStorage.getItem('playerName') || 'プレイヤー';
-    const snapshot = await db.ref('users').orderByChild('name').equalTo(playerName).once('value');
-    const data = snapshot.val();
-    if (data) {
-      Object.values(data).forEach(user => {
-        if (user.adminPass === 'kairi201478') {
-          isAdmin = true;
-          console.log('管理者です');
-        }
-      });
-    }
-  } catch(e) {
-    console.log('管理者チェック失敗:', e);
-  }
-}
-
-// APボタン表示
-function showAdminPanel() {
-  if (!isAdmin) return;
-  const btn = document.createElement('button');
-  btn.id = 'adminBtn';
-  btn.textContent = 'AP';
-  btn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9998;padding:8px 12px;background:#ff3d8a;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer';
-  btn.onclick = toggleAdminPanel;
-  document.body.appendChild(btn);
-}
-
-function toggleAdminPanel() {
-  adminPanelOpen = !adminPanelOpen;
-  const panel = document.getElementById('adminPanel');
-  if (adminPanelOpen && !panel) {
-    createAdminPanel();
-  } else if (panel) {
-    panel.style.display = adminPanelOpen ? 'block' : 'none';
-  }
-}
-
-function createAdminPanel() {
-  const panel = document.createElement('div');
-  panel.id = 'adminPanel';
-  panel.style.cssText = 'position:fixed;top:50px;right:10px;z-index:9999;background:#fff;border:2px solid #ff3d8a;border-radius:8px;padding:12px;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,0.15)';
-  panel.innerHTML = `
-    <div style="font-weight:600;margin-bottom:10px">管理者コマンド</div>
-    <button onclick="toggleCheat()" style="width:100%;padding:8px;margin-bottom:8px;background:${cheatActive?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">🛡️ チート: ${cheatActive?'ON':'OFF'}</button>
-    <button onclick="toggleKill()" style="width:100%;padding:8px;margin-bottom:8px;background:${killActive?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">💀 10秒キル: ${killActive?'ON':'OFF'}</button>
-    <button onclick="toggleInfiniteInk()" style="width:100%;padding:8px;background:${infiniteInk?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">♾️ 無限インク: ${infiniteInk?'ON':'OFF'}</button>
-  `;
-  document.body.appendChild(panel);
-}
-
-function toggleCheat() { cheatActive = !cheatActive; updateAdminPanel(); }
-function toggleKill() { killActive = !killActive; if(killActive) startKillMode(); updateAdminPanel(); }
-function toggleInfiniteInk() { infiniteInk = !infiniteInk; updateAdminPanel(); }
-
-function updateAdminPanel() {
-  const panel = document.getElementById('adminPanel');
-  if (panel) {
-    panel.innerHTML = `
-      <div style="font-weight:600;margin-bottom:10px">管理者コマンド</div>
-      <button onclick="toggleCheat()" style="width:100%;padding:8px;margin-bottom:8px;background:${cheatActive?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">🛡️ チート: ${cheatActive?'ON':'OFF'}</button>
-      <button onclick="toggleKill()" style="width:100%;padding:8px;margin-bottom:8px;background:${killActive?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">💀 10秒キル: ${killActive?'ON':'OFF'}</button>
-      <button onclick="toggleInfiniteInk()" style="width:100%;padding:8px;background:${infiniteInk?'#ff3d8a':'#ddd'};color:#fff;border:none;border-radius:4px;cursor:pointer">♾️ 無限インク: ${infiniteInk?'ON':'OFF'}</button>
-    `;
-  }
-}
-
-function startKillMode() {
-  // 10秒後に敵をキル（ゲーム内の敵オブジェクトに対する処理は、ゲーム本体のコード内で実装）
-  console.log('10秒キルモード開始');
-}
-
-// ゲーム開始時に管理者チェック
-checkAdmin();
-setTimeout(showAdminPanel, 500);
-</script>
-
 </head>
 <body>
 <div style="position:fixed;top:10px;left:10px;z-index:9999">
@@ -557,7 +412,7 @@ function setupPlayers(){
 // ================= ぬる処理 =================
 function splat(x,y,r,team,owner){
   inkCtx.fillStyle=COLORS[team];
-  inkCtx.beginPath();inkCtx.arc(x,y,r,0,Math.PI*2);inkCtx.fill();
+  // インク描画削除
   const blobs=2+Math.floor(r/14);
   for(let i=0;i<blobs;i++){
     const a=Math.random()*Math.PI*2,d=r*(0.6+Math.random()*0.7);
@@ -712,7 +567,6 @@ function respawn(p){
 // ================= ボス =================
 function damageBoss(dmg,by){
   if(!boss||boss.hp<=0)return;
-  if(cheatActive) return; // チート有効なら無視
   boss.hp-=dmg;
   particles.push({x:boss.x,y:boss.y-30,vx:0,vy:-60,r:6,life:0.4,team:1});
   if(boss.hp<=0){
