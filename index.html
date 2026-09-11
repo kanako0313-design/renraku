@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>楽楽連絡</title>
 <meta name="apple-mobile-web-app-title" content="楽楽連絡">
-<link rel="apple-touch-icon" href="IMG_4280.png">
+<link rel="apple-touch-icon" href="icon.png">
 <style>
   :root{
     --teal:#0f766e; --amber:#E8A33D; --amber-ink:#B87415;
@@ -225,6 +225,54 @@ const MAX_MSGS = 120;
 const MAX_REC_SEC = 10;
 
 const app = document.getElementById("app");
+
+/* ===== ランキング表示 ===== */
+async function showRanking(){
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "🏆 ゲームランキング"));
+  
+  const msg = el("p", "small", "読み込み中...");
+  sheet.appendChild(msg);
+  
+  try {
+    // Firebase Database のルール設定がオープンなので、直接読み込める
+    const res = await fetch('https://rakuraku-1e398-default-rtdb.asia-southeast1.firebasedatabase.app/scores.json');
+    const data = await res.json();
+    
+    sheet.removeChild(msg);
+    
+    if(!data || Object.keys(data).length === 0){
+      sheet.appendChild(el("p", "note", "ランキングはまだありません"));
+    } else {
+      // スコアをソートして上位10位を表示
+      const ranking = Object.values(data)
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .slice(0, 10);
+      
+      ranking.forEach((entry, idx) => {
+        const row = document.createElement('p');
+        row.style.cssText = 'display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid var(--line);margin:0';
+        const medal = ['🥇', '🥈', '🥉'][idx] || (idx+1)+'位';
+        row.innerHTML = `<span>${medal} ${entry.name || '無名'}</span> <span style="font-weight:600">${(entry.score || 0).toLocaleString()}円</span>`;
+        sheet.appendChild(row);
+      });
+    }
+  } catch(e) {
+    sheet.removeChild(msg);
+    sheet.appendChild(el("p", "note", "ランキングが読み込めません"));
+    console.error('ランキング読み込みエラー:', e);
+  }
+  
+  const closeBtn = el("button", "primary", "閉じる");
+  closeBtn.onclick = () => veil.remove();
+  sheet.appendChild(closeBtn);
+  
+  veil.onclick = (e) => { if(e.target === veil) veil.remove(); };
+  veil.appendChild(sheet);
+  app.appendChild(veil);
+}
+
 const el = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
 const esc = (s) => (s || "").replace(/[.#$/[\]]/g, "_").slice(0, 30);
 const hhmm = (t) => { const d = new Date(t); return d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0"); };
@@ -567,6 +615,11 @@ function showSetup() {
   gameBtn2.style.marginBottom = "8px";
   gameBtn2.onclick = () => window.open("./game2.html", "_blank");
   card.appendChild(gameBtn2);
+  
+  const rankingBtn = el("button", "cancel", "🏆 ランキングを見る");
+  rankingBtn.style.marginBottom = "8px";
+  rankingBtn.onclick = showRanking;
+  card.appendChild(rankingBtn);
   
   card.appendChild(el("hr", "sep"));
 
