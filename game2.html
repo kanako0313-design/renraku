@@ -131,6 +131,22 @@
   #rankNote{color:rgba(255,255,255,.55);font-size:10px;}
   .hidden{display:none !important;}
 </style>
+
+<!-- インク回復スピード調整 -->
+<div style="position:fixed;top:10px;right:10px;z-index:9999;background:#333;color:#fff;padding:12px;border-radius:8px;font-size:12px">
+  <label>インク回復速度: <span id="speedVal">10</span></label><br>
+  <input type="range" id="speedSlider" min="10" max="60" value="10" style="width:120px;margin-top:5px">
+</div>
+<script>
+let inkRecoverySpeed = 10;
+const speedSlider = document.getElementById('speedSlider');
+const speedVal = document.getElementById('speedVal');
+speedSlider.addEventListener('input', (e) => {
+  inkRecoverySpeed = parseInt(e.target.value);
+  speedVal.textContent = inkRecoverySpeed;
+});
+</script>
+
 </head>
 <body>
 <div style="position:fixed;top:10px;left:10px;z-index:9999">
@@ -731,8 +747,7 @@ function moveChar(p,dt){
 }
 function refillInk(p,dt){
   const own=groundOwner(p.x,p.y);
-  if(own===p.team)p.ink+=34*dt;
-  else if(own===0)p.ink+=8*dt;
+  if(own===p.team)p.ink+=inkRecoverySpeed*dt;
   if(p.ink>100)p.ink=100;
 }
 function updateGimmicks(dt){
