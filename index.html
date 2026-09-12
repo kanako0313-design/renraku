@@ -40,6 +40,7 @@
   .avatars button[aria-pressed=true]{background:#ccfbf1}
   .note{font-size:12px;color:var(--muted);line-height:1.7;margin:0 0 20px}
   .primary{width:100%;padding:14px;border-radius:16px;background:var(--teal);color:#fff;font-weight:600}
+  .ttl{display:inline-block;font-size:10px;background:#FDF0DC;color:var(--amber-ink);padding:1px 7px;border-radius:999px;margin-right:5px;font-weight:600;vertical-align:middle}
   .primary:disabled{opacity:.35}
   .steps{font-size:14px;line-height:1.9;padding-left:20px;margin:0 0 16px}
   code{background:#f2f3ef;padding:2px 6px;border-radius:6px;font-size:12px;word-break:break-all}
@@ -595,6 +596,7 @@ function showSetup() {
     me = { uid: me?.uid || uid(), name, avatar, bday };
     store("me", me);
     rooms.forEach(r => pushMember(r));
+    watchPlayer();
     showHome();
   };
   card.appendChild(go);
@@ -834,6 +836,8 @@ function showMore(roomId) {
   };
   item("🖼️  アルバム", () => showAlbum(roomId));
   item("🗳️  投票・アンケート", () => showPolls(roomId));
+  item("🎰  称号ガチャ（🪙" + myPlay.coins + "）", () => showGacha());
+  item("👑  もってる称号", () => showTitles());
 
   const close = el("button", "cancel", "閉じる");
   close.onclick = () => veil.remove();
@@ -1032,6 +1036,235 @@ function openPoll(roomId, key) {
   sheet.appendChild(close);
 
   veil.onclick = (e) => { if (e.target === veil) closePoll(); };
+  veil.appendChild(sheet);
+  app.appendChild(veil);
+}
+
+
+/* ===== コイン・ガチャ・称号 ===== */
+const TITLES = [
+  { id:"n1", name:"かけだし",           r:"N"  },
+  { id:"n2", name:"おしゃべり",         r:"N"  },
+  { id:"n3", name:"ねぼすけ",           r:"N"  },
+  { id:"n4", name:"まいにち元気",       r:"N"  },
+  { id:"n5", name:"あいさつ係",         r:"N"  },
+  { id:"n6", name:"そこにいる人",       r:"N"  },
+  { id:"r1", name:"スタンプ王",         r:"R"  },
+  { id:"r2", name:"写真マスター",       r:"R"  },
+  { id:"r3", name:"夜ふかし隊長",       r:"R"  },
+  { id:"r4", name:"早おきの達人",       r:"R"  },
+  { id:"r5", name:"ツッコミ番長",       r:"R"  },
+  { id:"s1", name:"伝説のうるさい人",   r:"SR" },
+  { id:"s2", name:"無言の支配者",       r:"SR" },
+  { id:"s3", name:"グループのぬし",     r:"SR" },
+  { id:"s4", name:"やさしさの化身",     r:"SR" },
+  { id:"u1", name:"👑 楽楽連絡の神",     r:"UR" },
+  { id:"u2", name:"⚡ 光の速さで返す者", r:"UR" },
+  { id:"u3", name:"🌈 まぼろしの住人",   r:"UR" }
+];
+const RARITY = { N:{w:60,c:"#e8ebe4",label:"ふつう"}, R:{w:25,c:"#ccfbf1",label:"ちょっとレア"}, SR:{w:12,c:"#FDF0DC",label:"レア"}, UR:{w:3,c:"#ffe0f0",label:"激レア"} };
+const GACHA_COST = 100;
+const DUP_BACK = 30;
+
+let myPlay = { coins: 0, titles: {}, title: null };
+let offPlay = null;
+
+function playRef(sub) { return fb.ref(db, "players/" + me.uid + (sub ? "/" + sub : "")); }
+
+function watchPlayer() {
+  if (!me || !me.uid || !db) return;
+  if (offPlay) { try { offPlay(); } catch (e) {} offPlay = null; }
+  offPlay = fb.onValue(playRef(), (snap) => {
+    const v = snap.val() || {};
+    myPlay = { coins: v.coins || 0, titles: v.titles || {}, title: v.title || null };
+    if (me.title !== myPlay.title) { me.title = myPlay.title; store("me", me); }
+  });
+  dailyBonus();
+}
+
+async function dailyBonus() {
+  try {
+    const d = new Date();
+    const key = d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+    const snap = await fb.get(playRef("lastBonus"));
+    if (snap.val() === key) return;
+    await fb.set(playRef("lastBonus"), key);
+    await addCoins(50);
+    toastCoin("ログインボーナス 🪙50 コイン！");
+  } catch (e) {}
+}
+
+async function addCoins(n) {
+  try { await fb.runTransaction(playRef("coins"), (c) => (c || 0) + n); } catch (e) {}
+}
+
+function toastCoin(msg) {
+  const t = el("div", "busy", msg);
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+function titleById(id) { return TITLES.find((t) => t.id === id); }
+
+function titleChip(t, big) {
+  const c = el("span", "ttl", t.name);
+  c.style.background = RARITY[t.r].c;
+  if (big) c.style.cssText += ";font-size:13px;padding:4px 10px";
+  return c;
+}
+
+/* --- ガチャ --- */
+function showGacha() {
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "🎰 称号ガチャ"));
+
+  const coin = el("p", null, "");
+  coin.style.cssText = "font-size:14px;color:var(--ink);margin:0 0 14px;font-weight:600";
+  sheet.appendChild(coin);
+
+  const stage = el("div", null);
+  stage.style.cssText = "min-height:90px;display:flex;align-items:center;justify-content:center;background:#f2f3ef;border-radius:16px;margin-bottom:12px;padding:14px;text-align:center";
+  stage.appendChild(el("p", null, "1回 🪙" + GACHA_COST + "コインで称号が1つ出るよ"));
+  stage.firstChild.style.cssText = "font-size:13px;color:var(--muted);margin:0";
+  sheet.appendChild(stage);
+
+  const pull = el("button", "primary", "🎰 ガチャをまわす（🪙" + GACHA_COST + "）");
+  pull.style.marginBottom = "8px";
+  sheet.appendChild(pull);
+
+  const refresh = () => {
+    coin.textContent = "もってるコイン：🪙 " + myPlay.coins;
+    pull.disabled = myPlay.coins < GACHA_COST;
+  };
+  refresh();
+  const iv = setInterval(refresh, 600);
+
+  pull.onclick = async () => {
+    if (myPlay.coins < GACHA_COST) return;
+    pull.disabled = true;
+    stage.innerHTML = "";
+    const spin = el("p", null, "🎰");
+    spin.style.cssText = "font-size:40px;margin:0";
+    stage.appendChild(spin);
+    const faces = ["🎰", "✨", "🎲", "💫"];
+    let i = 0;
+    const anim = setInterval(() => { spin.textContent = faces[i++ % faces.length]; }, 120);
+
+    try {
+      await addCoins(-GACHA_COST);
+      const got = rollTitle();
+      const already = !!myPlay.titles[got.id];
+      if (already) await addCoins(DUP_BACK);
+      else await fb.set(playRef("titles/" + got.id), true);
+
+      setTimeout(() => {
+        clearInterval(anim);
+        stage.innerHTML = "";
+        const rar = el("p", null, RARITY[got.r].label + "（" + got.r + "）");
+        rar.style.cssText = "font-size:12px;color:var(--muted);margin:0 0 8px";
+        stage.innerHTML = "";
+        const wrap = el("div", null);
+        wrap.appendChild(rar);
+        wrap.appendChild(titleChip(got, true));
+        if (already) {
+          const dup = el("p", null, "もってた！🪙" + DUP_BACK + "コイン返ってきたよ");
+          dup.style.cssText = "font-size:12px;color:var(--muted);margin:8px 0 0";
+          wrap.appendChild(dup);
+        } else {
+          const nw = el("p", null, "✨ あたらしい称号をゲット！");
+          nw.style.cssText = "font-size:12px;color:var(--teal);margin:8px 0 0;font-weight:600";
+          wrap.appendChild(nw);
+        }
+        stage.appendChild(wrap);
+        refresh();
+      }, 900);
+    } catch (e) {
+      clearInterval(anim);
+      stage.innerHTML = "";
+      stage.appendChild(el("p", null, "うまくまわせませんでした。"));
+      refresh();
+    }
+  };
+
+  const list = el("button", "cancel", "👑 もってる称号を見る");
+  list.style.marginBottom = "8px";
+  list.onclick = () => { clearInterval(iv); veil.remove(); showTitles(); };
+  sheet.appendChild(list);
+
+  const close = el("button", "cancel", "閉じる");
+  close.onclick = () => { clearInterval(iv); veil.remove(); };
+  sheet.appendChild(close);
+
+  veil.onclick = (e) => { if (e.target === veil) { clearInterval(iv); veil.remove(); } };
+  veil.appendChild(sheet);
+  app.appendChild(veil);
+}
+
+function rollTitle() {
+  let total = 0;
+  TITLES.forEach((t) => { total += RARITY[t.r].w; });
+  let x = Math.random() * total;
+  for (const t of TITLES) {
+    x -= RARITY[t.r].w;
+    if (x <= 0) return t;
+  }
+  return TITLES[0];
+}
+
+/* --- 称号をつける --- */
+function showTitles() {
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "👑 もってる称号"));
+
+  const body = el("div", null);
+  body.style.cssText = "max-height:50vh;overflow-y:auto;margin-bottom:12px";
+  sheet.appendChild(body);
+
+  const draw = () => {
+    body.innerHTML = "";
+    const ids = Object.keys(myPlay.titles || {});
+    if (!ids.length) {
+      const p0 = el("p", null, "まだ称号がないよ。ガチャをまわしてみて！");
+      p0.style.cssText = "font-size:13px;color:var(--muted);text-align:center;padding:20px 0;margin:0";
+      body.appendChild(p0);
+      return;
+    }
+    const order = { UR:0, SR:1, R:2, N:3 };
+    ids.map(titleById).filter(Boolean).sort((a, b) => order[a.r] - order[b.r]).forEach((t) => {
+      const on = myPlay.title === t.id;
+      const b = el("button", null, "");
+      b.style.cssText = "width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:14px;background:" + (on ? "#ccfbf1" : "#f2f3ef") + ";margin-bottom:8px";
+      const left = el("div", null);
+      left.appendChild(titleChip(t));
+      b.appendChild(left);
+      const st = el("span", null, on ? "つけてる" : t.r);
+      st.style.cssText = "font-size:11px;color:var(--muted);flex-shrink:0";
+      b.appendChild(st);
+      b.onclick = async () => {
+        try {
+          const next = on ? null : t.id;
+          await fb.set(playRef("title"), next);
+          myPlay.title = next; me.title = next; store("me", me);
+          draw();
+        } catch (e) { fail("つけられませんでした。"); }
+      };
+      body.appendChild(b);
+    });
+  };
+  draw();
+
+  const g = el("button", "cancel", "🎰 ガチャにもどる");
+  g.style.marginBottom = "8px";
+  g.onclick = () => { veil.remove(); showGacha(); };
+  sheet.appendChild(g);
+
+  const close = el("button", "cancel", "閉じる");
+  close.onclick = () => veil.remove();
+  sheet.appendChild(close);
+
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
   veil.appendChild(sheet);
   app.appendChild(veil);
 }
@@ -1334,7 +1567,7 @@ async function send(type, body, extra) {
   const textIn = document.getElementById("text");
   try {
     const msg = Object.assign({
-      uid: me.uid, name: me.name, avatar: me.avatar, type,
+      uid: me.uid, name: me.name, avatar: me.avatar, ttl: me.title || null, type,
       body: HEAVY.indexOf(type) !== -1 ? b : b.slice(0, 1000), t: Date.now()
     }, extra || {});
     await fb.push(fb.ref(db, `rooms/${room}/messages`), msg);
@@ -1346,6 +1579,7 @@ async function send(type, body, extra) {
     if (stickersOpen) document.getElementById("stickerBtn").click();
     pinnedHidden = false;
     fail("");
+    addCoins(1);
     trim(room);
   } catch (e) {
     fail(type === "voice" ? "声が長すぎたか、送れませんでした。" : (type === "photo" ? "写真を送れませんでした。" : "送れませんでした。もう一度おしてみてね。"));
@@ -2076,7 +2310,10 @@ function render() {
 
     const stack = el("div", "stack");
     if (showName) {
-      const who = el("p", "who", m.name);
+      const who = el("p", "who", "");
+      const mt = m.ttl ? titleById(m.ttl) : null;
+      if (mt) who.appendChild(titleChip(mt));
+      who.appendChild(document.createTextNode(m.name));
       if (members[m.uid] && members[m.uid].admin) who.appendChild(el("span", "crown", "👑"));
       stack.appendChild(who);
     }
@@ -2168,7 +2405,7 @@ function render() {
 }
 
 try {
-  (me && me.name) ? showHome() : showSetup();
+  (me && me.name) ? (watchPlayer(), showHome()) : showSetup();
 } catch (e) {
   app.innerHTML = '<div class="center"><div class="card"><h1>ごめん、うまく開けなかった</h1><p class="note">' + String(e.message) + '</p></div></div>';
 }
