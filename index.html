@@ -702,6 +702,85 @@ function pushMember(room) {
 }
 
 /* ========== 2. グループ一覧 ========== */
+
+/* ===== アルバム機能 ===== */
+function showAlbum(roomId) {
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "アルバム"));
+  
+  const addBtn = el("button", "primary", "写真を追加");
+  addBtn.onclick = () => {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = "image/*";
+    inp.multiple = true;
+    inp.onchange = async () => {
+      const files = Array.from(inp.files || []).slice(0, 10);
+      for (const file of files) {
+        try {
+          const data = await fileToBase64(file);
+          const now = Date.now();
+          const albumRef = db.ref("albums/"+roomId+"/"+now);
+          await albumRef.set({
+            img: data,
+            by: me.name,
+            t: now
+          });
+        } catch(e) { console.error(e); }
+      }
+    };
+    inp.click();
+  };
+  sheet.appendChild(addBtn);
+  
+  const gallery = el("div", null);
+  gallery.style.cssText = "display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;max-height:400px;overflow-y:auto";
+  
+  db.ref("albums/"+roomId).on("value", (snap) => {
+    gallery.innerHTML = "";
+    const data = snap.val() || {};
+    Object.values(data).sort((a,b) => (b.t||0) - (a.t||0)).forEach(entry => {
+      if(entry.img) {
+        const img = new Image();
+        img.src = entry.img;
+        img.style.cssText = "width:100%;border-radius:8px;cursor:pointer;object-fit:cover";
+        img.onclick = () => {
+          const modal = el("div", "veil");
+          const big = new Image();
+          big.src = entry.img;
+          big.style.cssText = "max-width:90%;max-height:90%;border-radius:12px";
+          const box = el("div", "sheet");
+          box.appendChild(big);
+          modal.appendChild(box);
+          app.appendChild(modal);
+          modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+        };
+        gallery.appendChild(img);
+      }
+    });
+  });
+  
+  sheet.appendChild(gallery);
+  
+  const close = el("button", "cancel", "閉じる");
+  close.onclick = () => veil.remove();
+  sheet.appendChild(close);
+  
+  veil.onclick = (e) => { if(e.target === veil) veil.remove(); };
+  veil.appendChild(sheet);
+  app.appendChild(veil);
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function showHome() {
   app.innerHTML = "";
   startWatch();
@@ -832,7 +911,7 @@ function showChat() {
     + '<button class="toggle" id="noticeBtn">📣 お知らせとして送る</button>'
     + '<div class="compose">'
     + '<button class="icon" id="stickerBtn" aria-label="スタンプを選ぶ">😊</button>'
-    + '<button class="icon" id="photoBtn" aria-label="写真を送る">📷</button>'
+    + '<button class="icon" id="photoBtn" aria-label="写真を送る">📷</button>' + '<button class="icon" id="albumBtn" aria-label="アルバム">🖼️</button>'
     + '<button class="icon micbtn" id="micBtn" aria-label="声を録音する">🎤</button>'
     + '<textarea id="text" rows="1" placeholder="メッセージを書く"></textarea>'
     + '<button id="send" aria-label="送る" disabled>➤</button>'
