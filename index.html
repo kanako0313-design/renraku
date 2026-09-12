@@ -63,7 +63,7 @@
 
   /* ---- 削除シート ---- */
   .veil{position:fixed;inset:0;background:rgba(36,51,48,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px;z-index:50}
-  .sheet{background:#fff;border-radius:22px;padding:22px;width:100%;max-width:400px}
+  .sheet{background:#fff;border-radius:22px;padding:22px;width:100%;max-width:400px;max-height:86dvh;overflow-y:auto}
   .sheet h2{font-family:var(--round);font-size:18px;margin:0 0 8px}
   .sheet p{font-size:13px;color:var(--muted);line-height:1.7;margin:0 0 18px}
   .sheet .del{width:100%;padding:14px;border-radius:16px;background:#FDECEC;color:#9B2C2C;font-weight:600;margin-bottom:8px}
@@ -819,6 +819,223 @@ function openAlbumPhoto(roomId, key, v) {
   app.appendChild(modal);
 }
 
+
+/* ===== ＋メニュー ===== */
+function showMore(roomId) {
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "なにをする？"));
+
+  const item = (label, fn) => {
+    const b = el("button", "primary", label);
+    b.style.cssText = "margin-bottom:8px;background:#f2f3ef;color:var(--ink);text-align:left";
+    b.onclick = () => { veil.remove(); fn(); };
+    sheet.appendChild(b);
+  };
+  item("🖼️  アルバム", () => showAlbum(roomId));
+  item("🗳️  投票・アンケート", () => showPolls(roomId));
+
+  const close = el("button", "cancel", "閉じる");
+  close.onclick = () => veil.remove();
+  sheet.appendChild(close);
+
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet);
+  app.appendChild(veil);
+}
+
+/* ===== 投票・アンケート ===== */
+let offPolls = null;
+
+function showPolls(roomId) {
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "🗳️ 投票・アンケート"));
+
+  const mk = el("button", "primary", "＋ 新しい投票をつくる");
+  mk.style.marginBottom = "12px";
+  mk.onclick = () => { closePolls(); createPoll(roomId); };
+  sheet.appendChild(mk);
+
+  const list = el("div", null);
+  list.style.cssText = "max-height:50vh;overflow-y:auto;margin-bottom:14px";
+  sheet.appendChild(list);
+
+  const closePolls = () => {
+    if (offPolls) { try { offPolls(); } catch (e) {} offPolls = null; }
+    veil.remove();
+  };
+
+  if (offPolls) { try { offPolls(); } catch (e) {} offPolls = null; }
+  offPolls = fb.onValue(fb.ref(db, "polls/" + roomId), (snap) => {
+    list.innerHTML = "";
+    const items = [];
+    snap.forEach((c) => { items.push({ key: c.key, v: c.val() }); });
+    if (!items.length) {
+      const empty = el("p", null, "まだ投票がないよ。上のボタンからつくってね。");
+      empty.style.cssText = "font-size:13px;color:var(--muted);text-align:center;padding:20px 0;margin:0";
+      list.appendChild(empty);
+      return;
+    }
+    items.sort((a, b) => (b.v.t || 0) - (a.v.t || 0)).forEach(({ key, v }) => {
+      if (!v || !v.q) return;
+      const n = v.votes ? Object.keys(v.votes).length : 0;
+      const row = el("button", null, "");
+      row.style.cssText = "width:100%;text-align:left;padding:12px 14px;border-radius:14px;background:#f2f3ef;margin-bottom:8px";
+      const t = el("p", null, v.q);
+      t.style.cssText = "margin:0;font-size:14px;font-weight:600;color:var(--ink)";
+      const sub = el("p", null, (v.by || "だれか") + " ・ " + n + "人が投票ずみ");
+      sub.style.cssText = "margin:4px 0 0;font-size:12px;color:var(--muted)";
+      row.appendChild(t); row.appendChild(sub);
+      row.onclick = () => { closePolls(); openPoll(roomId, key); };
+      list.appendChild(row);
+    });
+  });
+
+  const close = el("button", "cancel", "閉じる");
+  close.onclick = closePolls;
+  sheet.appendChild(close);
+
+  veil.onclick = (e) => { if (e.target === veil) closePolls(); };
+  veil.appendChild(sheet);
+  app.appendChild(veil);
+}
+
+function createPoll(roomId) {
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "投票をつくる"));
+
+  const q = document.createElement("input");
+  q.type = "text"; q.placeholder = "しつもん（例：どこで遊ぶ？）";
+  q.style.marginBottom = "12px";
+  sheet.appendChild(q);
+
+  const box = el("div", null);
+  box.style.marginBottom = "8px";
+  sheet.appendChild(box);
+
+  const addRow = (ph) => {
+    const i = document.createElement("input");
+    i.type = "text"; i.placeholder = ph || "えらぶもの";
+    i.style.marginBottom = "8px";
+    box.appendChild(i);
+    return i;
+  };
+  addRow("えらぶもの 1");
+  addRow("えらぶもの 2");
+
+  const more = el("button", null, "＋ えらぶものを足す");
+  more.style.cssText = "width:100%;padding:10px;border-radius:14px;background:#f2f3ef;color:var(--ink);font-size:13px;margin-bottom:12px";
+  more.onclick = () => { if (box.children.length < 10) addRow("えらぶもの " + (box.children.length + 1)); };
+  sheet.appendChild(more);
+
+  const ok = el("button", "primary", "つくる");
+  ok.style.marginBottom = "8px";
+  ok.onclick = async () => {
+    const question = q.value.trim();
+    const opts = Array.from(box.children).map((i) => i.value.trim()).filter(Boolean);
+    if (!question) { q.focus(); return; }
+    if (opts.length < 2) { fail("えらぶものを2つ以上書いてね。"); return; }
+    ok.disabled = true; ok.textContent = "つくってるよ…";
+    try {
+      await fb.push(fb.ref(db, "polls/" + roomId), { q: question, opts, by: me.name, t: Date.now() });
+      veil.remove();
+      showPolls(roomId);
+    } catch (e) { ok.disabled = false; ok.textContent = "つくる"; fail("つくれませんでした。"); }
+  };
+  sheet.appendChild(ok);
+
+  const close = el("button", "cancel", "やめる");
+  close.onclick = () => veil.remove();
+  sheet.appendChild(close);
+
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet);
+  app.appendChild(veil);
+}
+
+let offOnePoll = null;
+
+function openPoll(roomId, key) {
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  const title = el("h2", null, "投票");
+  sheet.appendChild(title);
+
+  const body = el("div", null);
+  body.style.cssText = "max-height:50vh;overflow-y:auto;margin-bottom:12px";
+  sheet.appendChild(body);
+
+  const closePoll = () => {
+    if (offOnePoll) { try { offOnePoll(); } catch (e) {} offOnePoll = null; }
+    veil.remove();
+  };
+
+  if (offOnePoll) { try { offOnePoll(); } catch (e) {} offOnePoll = null; }
+  offOnePoll = fb.onValue(fb.ref(db, "polls/" + roomId + "/" + key), (snap) => {
+    const v = snap.val();
+    if (!v) { closePoll(); return; }
+    title.textContent = v.q;
+    body.innerHTML = "";
+
+    const votes = v.votes || {};
+    const total = Object.keys(votes).length;
+    const mine = votes[me.uid];
+
+    (v.opts || []).forEach((label, i) => {
+      const count = Object.values(votes).filter((x) => x === i).length;
+      const pct = total ? Math.round(count / total * 100) : 0;
+
+      const b = el("button", null, "");
+      b.style.cssText = "width:100%;text-align:left;padding:12px 14px;border-radius:14px;background:"
+        + (mine === i ? "#ccfbf1" : "#f2f3ef") + ";margin-bottom:8px;position:relative;overflow:hidden";
+
+      const bar = el("div", null);
+      bar.style.cssText = "position:absolute;left:0;top:0;bottom:0;width:" + pct + "%;background:rgba(20,184,166,.18)";
+      b.appendChild(bar);
+
+      const row = el("div", null);
+      row.style.cssText = "position:relative;display:flex;justify-content:space-between;gap:8px";
+      const lt = el("span", null, (mine === i ? "✅ " : "") + label);
+      lt.style.cssText = "font-size:14px;color:var(--ink)";
+      const rt = el("span", null, count + "人 (" + pct + "%)");
+      rt.style.cssText = "font-size:12px;color:var(--muted);flex-shrink:0";
+      row.appendChild(lt); row.appendChild(rt);
+      b.appendChild(row);
+
+      b.onclick = async () => {
+        try {
+          if (mine === i) await fb.remove(fb.ref(db, "polls/" + roomId + "/" + key + "/votes/" + me.uid));
+          else await fb.set(fb.ref(db, "polls/" + roomId + "/" + key + "/votes/" + me.uid), i);
+        } catch (e) { fail("投票できませんでした。"); }
+      };
+      body.appendChild(b);
+    });
+
+    const info = el("p", null, "ぜんぶで " + total + "人が投票 ・ つくった人：" + (v.by || "だれか"));
+    info.style.cssText = "font-size:12px;color:var(--muted);margin:10px 0 0";
+    body.appendChild(info);
+
+    if (v.by === me.name) {
+      const del = el("button", "del", "この投票を消す");
+      del.onclick = async () => {
+        try { await fb.remove(fb.ref(db, "polls/" + roomId + "/" + key)); closePoll(); }
+        catch (e) { fail("消せませんでした。"); }
+      };
+      body.appendChild(del);
+    }
+  });
+
+  const close = el("button", "cancel", "閉じる");
+  close.onclick = closePoll;
+  sheet.appendChild(close);
+
+  veil.onclick = (e) => { if (e.target === veil) closePoll(); };
+  veil.appendChild(sheet);
+  app.appendChild(veil);
+}
+
 function showHome() {
   app.innerHTML = "";
   startWatch();
@@ -949,7 +1166,7 @@ function showChat() {
     + '<button class="toggle" id="noticeBtn">📣 お知らせとして送る</button>'
     + '<div class="compose">'
     + '<button class="icon" id="stickerBtn" aria-label="スタンプを選ぶ">😊</button>'
-    + '<button class="icon" id="photoBtn" aria-label="写真を送る">📷</button>' + '<button class="icon" id="albumBtn" aria-label="アルバム">🖼️</button>'
+    + '<button class="icon" id="photoBtn" aria-label="写真を送る">📷</button>' + '<button class="icon" id="plusBtn" aria-label="もっと">➕</button>'
     + '<button class="icon micbtn" id="micBtn" aria-label="声を録音する">🎤</button>'
     + '<textarea id="text" rows="1" placeholder="メッセージを書く"></textarea>'
     + '<button id="send" aria-label="送る" disabled>➤</button>'
@@ -963,7 +1180,7 @@ function showChat() {
   if (isDM(current)) pen.style.display = "none";
   else pen.onclick = renameRoom;
   document.getElementById("photoBtn").onclick = pickPhoto;
-  document.getElementById("albumBtn").onclick = () => showAlbum(current);
+  document.getElementById("plusBtn").onclick = () => showMore(current);
 
   const stickerBar = document.getElementById("stickers");
   buildStickerBar();
