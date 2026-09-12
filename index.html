@@ -112,7 +112,14 @@
   .toggle{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:5px 12px;border-radius:999px;background:#f2f3ef;color:var(--muted);margin-bottom:8px}
   .toggle.on{background:#FDF0DC;color:var(--amber-ink)}
   .compose{display:flex;align-items:flex-end;gap:8px}
-  .icon{font-size:22px;padding:4px 6px;line-height:1}
+  .icon{font-size:22px;padding:4px 6px;line-height:1;flex:0 0 auto}
+  #text{min-width:0}
+  @media (max-width:400px){
+    footer{padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+    .compose{gap:2px}
+    .icon{font-size:20px;padding:4px 2px}
+    #send{width:38px;height:38px}
+  }
   #text{flex:1;resize:none;max-height:110px;border-radius:18px}
   #send{width:42px;height:42px;border-radius:999px;background:var(--teal);color:#fff;font-size:17px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
   #send:disabled{opacity:.3}
@@ -704,81 +711,112 @@ function pushMember(room) {
 /* ========== 2. グループ一覧 ========== */
 
 /* ===== アルバム機能 ===== */
+let offAlbum = null;
+
 function showAlbum(roomId) {
   const veil = el("div", "veil");
   const sheet = el("div", "sheet");
-  sheet.appendChild(el("h2", null, "アルバム"));
-  
-  const addBtn = el("button", "primary", "写真を追加");
+  sheet.appendChild(el("h2", null, "🖼️ アルバム"));
+
+  const addBtn = el("button", "primary", "＋ 写真を追加");
+  addBtn.style.marginBottom = "12px";
   addBtn.onclick = () => {
     const inp = document.createElement("input");
-    inp.type = "file";
-    inp.accept = "image/*";
-    inp.multiple = true;
+    inp.type = "file"; inp.accept = "image/*"; inp.multiple = true;
     inp.onchange = async () => {
       const files = Array.from(inp.files || []).slice(0, 10);
-      for (const file of files) {
+      if (!files.length) return;
+      let ng = 0;
+      for (let i = 0; i < files.length; i++) {
+        busy(true, "アルバムに入れてるよ… " + (i + 1) + "／" + files.length + "枚");
         try {
-          const data = await fileToBase64(file);
-          const now = Date.now();
-          const albumRef = db.ref("albums/"+roomId+"/"+now);
-          await albumRef.set({
-            img: data,
-            by: me.name,
-            t: now
-          });
-        } catch(e) { console.error(e); }
+          const r = await shrinkOne(files[i]);
+          const item = { img: r.small.data, w: r.small.w, h: r.small.h, by: me.name, t: Date.now() };
+          if (r.big.data.length <= 700000 && r.big.w > r.small.w) item.hi = r.big.data;
+          await fb.push(fb.ref(db, "albums/" + roomId), item);
+        } catch (e) { ng++; }
       }
+      busy(false);
+      if (ng) fail(ng + "枚は入れられませんでした。");
     };
     inp.click();
   };
   sheet.appendChild(addBtn);
-  
+
   const gallery = el("div", null);
-  gallery.style.cssText = "display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;max-height:400px;overflow-y:auto";
-  
-  db.ref("albums/"+roomId).on("value", (snap) => {
-    gallery.innerHTML = "";
-    const data = snap.val() || {};
-    Object.values(data).sort((a,b) => (b.t||0) - (a.t||0)).forEach(entry => {
-      if(entry.img) {
-        const img = new Image();
-        img.src = entry.img;
-        img.style.cssText = "width:100%;border-radius:8px;cursor:pointer;object-fit:cover";
-        img.onclick = () => {
-          const modal = el("div", "veil");
-          const big = new Image();
-          big.src = entry.img;
-          big.style.cssText = "max-width:90%;max-height:90%;border-radius:12px";
-          const box = el("div", "sheet");
-          box.appendChild(big);
-          modal.appendChild(box);
-          app.appendChild(modal);
-          modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
-        };
-        gallery.appendChild(img);
-      }
-    });
-  });
-  
+  gallery.style.cssText = "display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px;max-height:50vh;overflow-y:auto";
   sheet.appendChild(gallery);
-  
+
+  const closeAlbum = () => {
+    if (offAlbum) { try { offAlbum(); } catch (e) {} offAlbum = null; }
+    veil.remove();
+  };
+
+  if (offAlbum) { try { offAlbum(); } catch (e) {} offAlbum = null; }
+  offAlbum = fb.onValue(fb.ref(db, "albums/" + roomId), (snap) => {
+    gallery.innerHTML = "";
+    const items = [];
+    snap.forEach((child) => { items.push({ key: child.key, v: child.val() }); });
+    if (!items.length) {
+      const empty = el("p", null, "まだ写真がないよ。「＋ 写真を追加」から入れてね。");
+      empty.style.cssText = "grid-column:1/-1;font-size:13px;color:var(--muted);text-align:center;padding:20px 0";
+      gallery.appendChild(empty);
+      return;
+    }
+    items.sort((a, b) => (b.v.t || 0) - (a.v.t || 0)).forEach(({ key, v }) => {
+      if (!v || !v.img) return;
+      const thumb = new Image();
+      thumb.src = v.img;
+      thumb.style.cssText = "width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;cursor:pointer;background:#e8ebe4";
+      thumb.onclick = () => openAlbumPhoto(roomId, key, v);
+      gallery.appendChild(thumb);
+    });
+  }, (e) => {
+    const msg = el("p", null, "アルバムが読めませんでした。");
+    msg.style.cssText = "grid-column:1/-1;font-size:13px;color:#9B2C2C;text-align:center;padding:20px 0";
+    gallery.innerHTML = ""; gallery.appendChild(msg);
+  });
+
   const close = el("button", "cancel", "閉じる");
-  close.onclick = () => veil.remove();
+  close.onclick = closeAlbum;
   sheet.appendChild(close);
-  
-  veil.onclick = (e) => { if(e.target === veil) veil.remove(); };
+
+  veil.onclick = (e) => { if (e.target === veil) closeAlbum(); };
   veil.appendChild(sheet);
   app.appendChild(veil);
 }
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+function openAlbumPhoto(roomId, key, v) {
+  const modal = el("div", "veil");
+  const box = el("div", "sheet");
+
+  const big = new Image();
+  big.src = v.hi || v.img;
+  big.style.cssText = "width:100%;border-radius:12px;display:block;margin-bottom:10px";
+  box.appendChild(big);
+
+  const who = el("p", null, (v.by || "だれか") + " が入れた写真");
+  who.style.cssText = "font-size:12px;color:var(--muted);margin:0 0 10px";
+  box.appendChild(who);
+
+  const del = el("button", "primary", "この写真を消す");
+  del.style.cssText = "background:#9B2C2C;margin-bottom:8px";
+  del.onclick = async () => {
+    del.disabled = true; del.textContent = "消してるよ…";
+    try {
+      await fb.remove(fb.ref(db, "albums/" + roomId + "/" + key));
+      modal.remove();
+    } catch (e) { del.disabled = false; del.textContent = "この写真を消す"; fail("消せませんでした。"); }
+  };
+  box.appendChild(del);
+
+  const close = el("button", "cancel", "閉じる");
+  close.onclick = () => modal.remove();
+  box.appendChild(close);
+
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  modal.appendChild(box);
+  app.appendChild(modal);
 }
 
 function showHome() {
@@ -925,6 +963,7 @@ function showChat() {
   if (isDM(current)) pen.style.display = "none";
   else pen.onclick = renameRoom;
   document.getElementById("photoBtn").onclick = pickPhoto;
+  document.getElementById("albumBtn").onclick = () => showAlbum(current);
 
   const stickerBar = document.getElementById("stickers");
   buildStickerBar();
