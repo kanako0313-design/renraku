@@ -652,6 +652,13 @@ function showSetup() {
     inbox.style.marginBottom = "8px";
     inbox.onclick = openInbox;
     card.appendChild(inbox);
+    const apBtn = el("button", "cancel", "🛠️ 管理パネルを開く");
+    apBtn.style.marginBottom = "8px";
+    apBtn.onclick = () => {
+      if (!current) { fail("グループを開いてから使ってね。"); return; }
+      showAdminPanel(current);
+    };
+    card.appendChild(apBtn);
   }
 
   if (me) {
@@ -801,8 +808,10 @@ function openAlbumPhoto(roomId, key, v) {
   who.style.cssText = "font-size:12px;color:var(--muted);margin:0 0 10px";
   box.appendChild(who);
 
-  const del = el("button", "primary", "この写真を消す");
+  const canDel = (v.by === me.name) || isAdmin;
+  const del = el("button", "primary", isAdmin && v.by !== me.name ? "👑 この写真を消す" : "この写真を消す");
   del.style.cssText = "background:#9B2C2C;margin-bottom:8px";
+  if (!canDel) del.style.display = "none";
   del.onclick = async () => {
     del.disabled = true; del.textContent = "消してるよ…";
     try {
@@ -838,6 +847,7 @@ function showMore(roomId) {
   item("🗳️  投票・アンケート", () => showPolls(roomId));
   item("🎰  称号ガチャ（🪙" + myPlay.coins + "）", () => showGacha());
   item("👑  もってる称号", () => showTitles());
+  if (isAdmin) item("🛠️  管理パネル（👑のみ）", () => showAdminPanel(roomId));
 
   const close = el("button", "cancel", "閉じる");
   close.onclick = () => veil.remove();
@@ -1021,8 +1031,8 @@ function openPoll(roomId, key) {
     info.style.cssText = "font-size:12px;color:var(--muted);margin:10px 0 0";
     body.appendChild(info);
 
-    if (v.by === me.name) {
-      const del = el("button", "del", "この投票を消す");
+    if (v.by === me.name || isAdmin) {
+      const del = el("button", "del", (isAdmin && v.by !== me.name) ? "👑 この投票を消す" : "この投票を消す");
       del.onclick = async () => {
         try { await fb.remove(fb.ref(db, "polls/" + roomId + "/" + key)); closePoll(); }
         catch (e) { fail("消せませんでした。"); }
@@ -1064,6 +1074,9 @@ const TITLES = [
 ];
 const RARITY = { N:{w:60,c:"#e8ebe4",label:"ふつう"}, R:{w:25,c:"#ccfbf1",label:"ちょっとレア"}, SR:{w:12,c:"#FDF0DC",label:"レア"}, UR:{w:3,c:"#ffe0f0",label:"激レア"} };
 const GACHA_COST = 100;
+const LUCK = { N: 0.6, R: 1.5, SR: 1.5, UR: 1.5 };
+let luckyMode = false;
+try { luckyMode = localStorage.getItem("lucky") === "1"; } catch (e) {}
 const DUP_BACK = 30;
 
 let myPlay = { coins: 0, titles: {}, title: null };
@@ -1122,6 +1135,12 @@ function showGacha() {
   const coin = el("p", null, "");
   coin.style.cssText = "font-size:14px;color:var(--ink);margin:0 0 14px;font-weight:600";
   sheet.appendChild(coin);
+
+  if (luckyMode && isAdmin) {
+    const luck = el("p", null, "🍀 ラッキーガチャ中！レアが出やすいよ");
+    luck.style.cssText = "font-size:12px;background:#ccfbf1;color:var(--teal);padding:7px 12px;border-radius:999px;margin:0 0 12px;text-align:center;font-weight:600";
+    sheet.insertBefore(luck, coin.nextSibling);
+  }
 
   const stage = el("div", null);
   stage.style.cssText = "min-height:90px;display:flex;align-items:center;justify-content:center;background:#f2f3ef;border-radius:16px;margin-bottom:12px;padding:14px;text-align:center";
@@ -1201,12 +1220,17 @@ function showGacha() {
   app.appendChild(veil);
 }
 
+function weightOf(t) {
+  const base = RARITY[t.r].w;
+  return (luckyMode && isAdmin) ? base * LUCK[t.r] : base;
+}
+
 function rollTitle() {
   let total = 0;
-  TITLES.forEach((t) => { total += RARITY[t.r].w; });
+  TITLES.forEach((t) => { total += weightOf(t); });
   let x = Math.random() * total;
   for (const t of TITLES) {
-    x -= RARITY[t.r].w;
+    x -= weightOf(t);
     if (x <= 0) return t;
   }
   return TITLES[0];
@@ -1259,6 +1283,149 @@ function showTitles() {
   g.style.marginBottom = "8px";
   g.onclick = () => { veil.remove(); showGacha(); };
   sheet.appendChild(g);
+
+  const close = el("button", "cancel", "閉じる");
+  close.onclick = () => veil.remove();
+  sheet.appendChild(close);
+
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet);
+  app.appendChild(veil);
+}
+
+
+/* ===== 管理パネル（👑の人だけ） ===== */
+function showAdminPanel(roomId) {
+  if (!isAdmin) { fail("これは管理者だけが開けるよ。"); return; }
+
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "👑 管理パネル"));
+  const lead = el("p", null, "このグループ「" + roomLabel(roomId) + "」を管理できるよ。");
+  sheet.appendChild(lead);
+
+  const section = (t) => {
+    const h = el("p", null, t);
+    h.style.cssText = "font-size:12px;color:var(--muted);margin:14px 0 6px;font-weight:600";
+    sheet.appendChild(h);
+  };
+  const btn = (label, fn, danger) => {
+    const b = el("button", danger ? "del" : "cancel", label);
+    b.style.marginBottom = "8px";
+    b.onclick = fn;
+    sheet.appendChild(b);
+    return b;
+  };
+
+  /* --- コイン --- */
+  section("🪙 コイン");
+  const amt = document.createElement("input");
+  amt.type = "text"; amt.inputMode = "numeric"; amt.placeholder = "あげるコインの数（例：100）";
+  amt.style.marginBottom = "8px";
+  sheet.appendChild(amt);
+
+  const give = async (onlyMe) => {
+    const n = parseInt(amt.value, 10);
+    if (!n || n === 0) { amt.focus(); return; }
+    busy(true, "コインをくばってるよ…");
+    try {
+      let uids = [me.uid];
+      if (!onlyMe) {
+        const snap = await fb.get(fb.ref(db, "rooms/" + roomId + "/members"));
+        uids = Object.keys(snap.val() || {});
+      }
+      for (const u of uids) {
+        await fb.runTransaction(fb.ref(db, "players/" + u + "/coins"), (c) => Math.max(0, (c || 0) + n));
+      }
+      busy(false);
+      toastCoin(uids.length + "人に 🪙" + n + " をくばったよ");
+    } catch (e) { busy(false); fail("くばれませんでした。"); }
+  };
+  btn("このグループ全員にあげる", () => give(false));
+  btn("自分だけにあげる", () => give(true));
+
+  /* --- ラッキーガチャ --- */
+  section("🍀 ラッキーガチャ");
+  const luckInfo = el("p", null, "");
+  luckInfo.style.cssText = "font-size:12px;color:var(--muted);margin:0 0 8px;line-height:1.6";
+  sheet.appendChild(luckInfo);
+
+  let luckBtn = null;
+  const drawLuck = () => {
+    luckInfo.textContent = luckyMode
+      ? "いまON。レア（R・SR・UR）が 1.5倍 出やすくて、ふつう（N）は出にくいよ。"
+      : "いまOFF。ふつうの確率でまわるよ。";
+    if (luckBtn) luckBtn.textContent = luckyMode ? "🍀 ラッキーガチャを OFF にする" : "🍀 ラッキーガチャを ON にする";
+  };
+  luckBtn = btn("", () => {
+    luckyMode = !luckyMode;
+    try { localStorage.setItem("lucky", luckyMode ? "1" : "0"); } catch (e) {}
+    drawLuck();
+  });
+  drawLuck();
+  btn("🎰 ラッキーのままガチャをまわす", () => {
+    if (!luckyMode) {
+      luckyMode = true;
+      try { localStorage.setItem("lucky", "1"); } catch (e) {}
+    }
+    veil.remove();
+    showGacha();
+  });
+
+  /* --- 称号 --- */
+  section("👑 称号");
+  btn("称号を全部じぶんに入れる", async () => {
+    busy(true, "入れてるよ…");
+    try {
+      const all = {};
+      TITLES.forEach((t) => { all[t.id] = true; });
+      await fb.update(fb.ref(db, "players/" + me.uid + "/titles"), all);
+      busy(false); toastCoin("称号を全部もらった！");
+    } catch (e) { busy(false); fail("入れられませんでした。"); }
+  });
+  btn("じぶんの称号をぜんぶ消す", async () => {
+    if (!confirm("じぶんの称号をぜんぶ消す？")) return;
+    try {
+      await fb.remove(fb.ref(db, "players/" + me.uid + "/titles"));
+      await fb.set(fb.ref(db, "players/" + me.uid + "/title"), null);
+      toastCoin("称号を消したよ");
+    } catch (e) { fail("消せませんでした。"); }
+  }, true);
+
+  /* --- そうじ --- */
+  section("🧹 そうじ");
+  btn("アルバムの写真をぜんぶ消す", async () => {
+    if (!confirm("このグループのアルバムをぜんぶ消す？もどせないよ。")) return;
+    try { await fb.remove(fb.ref(db, "albums/" + roomId)); toastCoin("アルバムを空にしたよ"); }
+    catch (e) { fail("消せませんでした。"); }
+  }, true);
+  btn("投票をぜんぶ消す", async () => {
+    if (!confirm("このグループの投票をぜんぶ消す？もどせないよ。")) return;
+    try { await fb.remove(fb.ref(db, "polls/" + roomId)); toastCoin("投票を空にしたよ"); }
+    catch (e) { fail("消せませんでした。"); }
+  }, true);
+
+  /* --- メンバー --- */
+  section("👥 メンバー");
+  const mlist = el("div", null);
+  mlist.style.cssText = "max-height:30vh;overflow-y:auto;margin-bottom:12px";
+  sheet.appendChild(mlist);
+  fb.get(fb.ref(db, "rooms/" + roomId + "/members")).then(async (snap) => {
+    const mem = snap.val() || {};
+    mlist.innerHTML = "";
+    for (const u of Object.keys(mem)) {
+      const mm = mem[u] || {};
+      let coins = 0;
+      try { const c = await fb.get(fb.ref(db, "players/" + u + "/coins")); coins = c.val() || 0; } catch (e) {}
+      const row = el("div", null);
+      row.style.cssText = "display:flex;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:12px;background:#f2f3ef;margin-bottom:6px;font-size:13px";
+      row.appendChild(el("span", null, (mm.avatar || "") + (mm.name || "？") + (mm.admin ? " 👑" : "")));
+      const c2 = el("span", null, "🪙 " + coins);
+      c2.style.cssText = "color:var(--muted);flex-shrink:0";
+      row.appendChild(c2);
+      mlist.appendChild(row);
+    }
+  }).catch(() => {});
 
   const close = el("button", "cancel", "閉じる");
   close.onclick = () => veil.remove();
