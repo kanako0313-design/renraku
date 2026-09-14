@@ -1205,10 +1205,12 @@ const TITLES = [
 ];
 const RARITY = { N:{w:60,c:"#e8ebe4",label:"ふつう"}, R:{w:25,c:"#ccfbf1",label:"ちょっとレア"}, SR:{w:12,c:"#FDF0DC",label:"レア"}, UR:{w:3,c:"#ffe0f0",label:"激レア"} };
 const GACHA_COST = 100;
-const LUCK = { N: 0.6, R: 1.5, SR: 1.5, UR: 1.5 };
+const LUCKY_COST = 1000;
+const LUCK = { N: 0.15, R: 1.0, SR: 2.5, UR: 6.0 };
 let luckyMode = false;
 try { luckyMode = localStorage.getItem("lucky") === "1"; } catch (e) {}
 const DUP_BACK = 30;
+const LUCKY_DUP_BACK = 300;
 
 let myPlay = { coins: 0, titles: {}, title: null };
 let offPlay = null;
@@ -1275,37 +1277,48 @@ function showGacha() {
 
   const stage = el("div", null);
   stage.style.cssText = "min-height:90px;display:flex;align-items:center;justify-content:center;background:#f2f3ef;border-radius:16px;margin-bottom:12px;padding:14px;text-align:center";
-  stage.appendChild(el("p", null, "1回 🪙" + GACHA_COST + "コインで称号が1つ出るよ"));
+  stage.appendChild(el("p", null, "まわすと称号が1つ出るよ"));
   stage.firstChild.style.cssText = "font-size:13px;color:var(--muted);margin:0";
   sheet.appendChild(stage);
 
-  const pull = el("button", "primary", "🎰 ガチャをまわす（🪙" + GACHA_COST + "）");
+  const pull = el("button", "primary", "🎰 ノーマルガチャ（🪙" + GACHA_COST + "）");
   pull.style.marginBottom = "8px";
   sheet.appendChild(pull);
+
+  const pullL = el("button", "primary", "🍀 ラッキーガチャ（🪙" + LUCKY_COST + "）");
+  pullL.style.cssText = "margin-bottom:4px;background:linear-gradient(135deg,#14b8a6,#ffd45e);color:#12352f";
+  sheet.appendChild(pullL);
+
+  const lnote = el("p", null, "ラッキーガチャは SR・UR がドカンと出やすい（URは約9倍！）。ダブっても🪙" + LUCKY_DUP_BACK + "もどってくるよ。");
+  lnote.style.cssText = "font-size:11px;color:var(--muted);margin:0 0 12px;line-height:1.6";
+  sheet.appendChild(lnote);
 
   const refresh = () => {
     coin.textContent = "もってるコイン：🪙 " + myPlay.coins;
     pull.disabled = myPlay.coins < GACHA_COST;
+    pullL.disabled = myPlay.coins < LUCKY_COST;
   };
   refresh();
   const iv = setInterval(refresh, 600);
 
-  pull.onclick = async () => {
-    if (myPlay.coins < GACHA_COST) return;
-    pull.disabled = true;
+  const doPull = async (lucky) => {
+    const cost = lucky ? LUCKY_COST : GACHA_COST;
+    const back = lucky ? LUCKY_DUP_BACK : DUP_BACK;
+    if (myPlay.coins < cost) return;
+    pull.disabled = true; pullL.disabled = true;
     stage.innerHTML = "";
     const spin = el("p", null, "🎰");
     spin.style.cssText = "font-size:40px;margin:0";
     stage.appendChild(spin);
-    const faces = ["🎰", "✨", "🎲", "💫"];
+    const faces = lucky ? ["🍀", "✨", "🌟", "💫"] : ["🎰", "✨", "🎲", "💫"];
     let i = 0;
     const anim = setInterval(() => { spin.textContent = faces[i++ % faces.length]; }, 120);
 
     try {
-      await addCoins(-GACHA_COST);
-      const got = rollTitle();
+      await addCoins(-cost);
+      const got = rollTitle(lucky);
       const already = !!myPlay.titles[got.id];
-      if (already) await addCoins(DUP_BACK);
+      if (already) await addCoins(back);
       else await fb.set(playRef("titles/" + got.id), true);
 
       setTimeout(() => {
@@ -1318,7 +1331,7 @@ function showGacha() {
         wrap.appendChild(rar);
         wrap.appendChild(titleChip(got, true));
         if (already) {
-          const dup = el("p", null, "もってた！🪙" + DUP_BACK + "コイン返ってきたよ");
+          const dup = el("p", null, "もってた！🪙" + back + "コイン返ってきたよ");
           dup.style.cssText = "font-size:12px;color:var(--muted);margin:8px 0 0";
           wrap.appendChild(dup);
         } else {
@@ -1337,6 +1350,9 @@ function showGacha() {
     }
   };
 
+  pull.onclick = () => doPull(false);
+  pullL.onclick = () => doPull(true);
+
   const list = el("button", "cancel", "👑 もってる称号を見る");
   list.style.marginBottom = "8px";
   list.onclick = () => { clearInterval(iv); veil.remove(); showTitles(); };
@@ -1351,17 +1367,18 @@ function showGacha() {
   app.appendChild(veil);
 }
 
-function weightOf(t) {
+function weightOf(t, lucky) {
   const base = RARITY[t.r].w;
-  return (luckyMode && isAdmin) ? base * LUCK[t.r] : base;
+  const on = lucky || (luckyMode && isAdmin);
+  return on ? base * LUCK[t.r] : base;
 }
 
-function rollTitle() {
+function rollTitle(lucky) {
   let total = 0;
-  TITLES.forEach((t) => { total += weightOf(t); });
+  TITLES.forEach((t) => { total += weightOf(t, lucky); });
   let x = Math.random() * total;
   for (const t of TITLES) {
-    x -= weightOf(t);
+    x -= weightOf(t, lucky);
     if (x <= 0) return t;
   }
   return TITLES[0];
@@ -1484,7 +1501,7 @@ function showAdminPanel(roomId) {
   let luckBtn = null;
   const drawLuck = () => {
     luckInfo.textContent = luckyMode
-      ? "いまON。レア（R・SR・UR）が 1.5倍 出やすくて、ふつう（N）は出にくいよ。"
+      ? "いまON。ノーマルガチャ（🪙100）がラッキー確率になるよ。URが約9倍出やすい。"
       : "いまOFF。ふつうの確率でまわるよ。";
     if (luckBtn) luckBtn.textContent = luckyMode ? "🍀 ラッキーガチャを OFF にする" : "🍀 ラッキーガチャを ON にする";
   };
@@ -1930,7 +1947,7 @@ async function send(type, body, extra) {
     if (stickersOpen) document.getElementById("stickerBtn").click();
     pinnedHidden = false;
     fail("");
-    addCoins(1);
+    addCoins(10);
     trim(room);
   } catch (e) {
     fail(type === "voice" ? "声が長すぎたか、送れませんでした。" : (type === "photo" ? "写真を送れませんでした。" : "送れませんでした。もう一度おしてみてね。"));
