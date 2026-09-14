@@ -1558,6 +1558,10 @@ function showAdminPanel(roomId) {
   const mlist = el("div", null);
   mlist.style.cssText = "max-height:30vh;overflow-y:auto;margin-bottom:12px";
   sheet.appendChild(mlist);
+  const memNote = el("p", null, "上の数字を入れてから、その人の ＋ / − を押すと、その人だけ増やしたり減らしたりできるよ。");
+  memNote.style.cssText = "font-size:11px;color:var(--muted);margin:0 0 8px;line-height:1.6";
+  sheet.insertBefore(memNote, mlist);
+
   fb.get(fb.ref(db, "rooms/" + roomId + "/members")).then(async (snap) => {
     const mem = snap.val() || {};
     mlist.innerHTML = "";
@@ -1565,12 +1569,39 @@ function showAdminPanel(roomId) {
       const mm = mem[u] || {};
       let coins = 0;
       try { const c = await fb.get(fb.ref(db, "players/" + u + "/coins")); coins = c.val() || 0; } catch (e) {}
+
       const row = el("div", null);
-      row.style.cssText = "display:flex;justify-content:space-between;gap:8px;padding:9px 12px;border-radius:12px;background:#f2f3ef;margin-bottom:6px;font-size:13px";
-      row.appendChild(el("span", null, (mm.avatar || "") + (mm.name || "？") + (mm.admin ? " 👑" : "")));
+      row.style.cssText = "display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:12px;background:#f2f3ef;margin-bottom:6px;font-size:13px";
+
+      const nm2 = el("span", null, (mm.avatar || "") + (mm.name || "？") + (mm.admin ? " 👑" : ""));
+      nm2.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+      row.appendChild(nm2);
+
       const c2 = el("span", null, "🪙 " + coins);
-      c2.style.cssText = "color:var(--muted);flex-shrink:0";
+      c2.style.cssText = "color:var(--muted);flex-shrink:0;min-width:58px;text-align:right";
       row.appendChild(c2);
+
+      const step = async (sign) => {
+        const n = parseInt(amt.value, 10);
+        if (!n || n === 0) { amt.focus(); fail("上に数字を入れてね。"); return; }
+        try {
+          await fb.runTransaction(fb.ref(db, "players/" + u + "/coins"), (c) => Math.max(0, (c || 0) + sign * Math.abs(n)));
+          const c3 = await fb.get(fb.ref(db, "players/" + u + "/coins"));
+          c2.textContent = "🪙 " + (c3.val() || 0);
+          toastCoin((mm.name || "この人") + " を 🪙" + (sign > 0 ? "+" : "−") + Math.abs(n) + " したよ");
+        } catch (e) { fail("かえられませんでした。"); }
+      };
+
+      const plus = el("button", null, "＋");
+      plus.style.cssText = "flex-shrink:0;width:34px;height:34px;border-radius:10px;background:#ccfbf1;color:var(--teal);font-weight:700;font-size:16px";
+      plus.onclick = () => step(1);
+      row.appendChild(plus);
+
+      const minus = el("button", null, "−");
+      minus.style.cssText = "flex-shrink:0;width:34px;height:34px;border-radius:10px;background:#FDECEC;color:#9B2C2C;font-weight:700;font-size:16px";
+      minus.onclick = () => step(-1);
+      row.appendChild(minus);
+
       mlist.appendChild(row);
     }
   }).catch(() => {});
