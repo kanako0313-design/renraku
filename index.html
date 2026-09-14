@@ -784,6 +784,11 @@ function showAlbum(roomId) {
       row.onclick = () => { closeIt(); openAlbumById(roomId, key); };
       list.appendChild(row);
     });
+  }, (err) => {
+    list.innerHTML = "";
+    const e2 = el("p", null, "❌ よみこめない：" + (err && err.message ? err.message : err));
+    e2.style.cssText = "font-size:12px;color:#9B2C2C;padding:14px 0;margin:0;line-height:1.6";
+    list.appendChild(e2);
   });
 
   const close = el("button", "cancel", "閉じる");
@@ -892,9 +897,19 @@ function openAlbumById(roomId, id) {
   };
 
   if (offOneAlbum) { try { offOneAlbum(); } catch (e) {} offOneAlbum = null; }
+  const errBox = el("p", null, "よみこみ中…");
+  errBox.style.cssText = "font-size:12px;color:var(--muted);margin:0 0 10px";
+  sheet.insertBefore(errBox, gallery);
+
   offOneAlbum = fb.onValue(fb.ref(db, "albums/" + roomId + "/" + id), (snap) => {
+    errBox.style.display = "none";
     const v = snap.val();
-    if (!v) { closeIt(); fail("このアルバムは消えたみたい。"); return; }
+    if (!v) {
+      errBox.style.display = "block";
+      errBox.style.color = "#9B2C2C";
+      errBox.textContent = "データが空っぽ。ばしょ：albums/" + roomId + "/" + id;
+      return;
+    }
     h.textContent = "🖼️ " + v.name;
     const ph = v.photos || {};
     const keys = Object.keys(ph);
@@ -927,6 +942,10 @@ function openAlbumById(roomId, id) {
         sheet.insertBefore(d, sheet.lastChild);
       }
     }
+  }, (err) => {
+    errBox.style.display = "block";
+    errBox.style.color = "#9B2C2C";
+    errBox.textContent = "❌ よみこめない：" + (err && err.message ? err.message : err);
   });
 
   const close = el("button", "cancel", "閉じる");
@@ -978,6 +997,8 @@ function showMore(roomId) {
   item("🗳️  投票・アンケート", () => showPolls(roomId));
   item("🎰  称号ガチャ（🪙" + myPlay.coins + "）", () => showGacha());
   item("👑  もってる称号", () => showTitles());
+  item("👥  みんなの称号", () => showAllTitles(roomId));
+  item("🔁  トレード", () => showTrades(roomId));
   if (isAdmin) item("🛠️  管理パネル（👑のみ）", () => showAdminPanel(roomId));
 
   const close = el("button", "cancel", "閉じる");
@@ -1312,7 +1333,7 @@ function showGacha() {
     stage.appendChild(spin);
     const faces = lucky ? ["🍀", "✨", "🌟", "💫"] : ["🎰", "✨", "🎲", "💫"];
     let i = 0;
-    const anim = setInterval(() => { spin.textContent = faces[i++ % faces.length]; }, 120);
+    const anim = setInterval(() => { spin.textContent = faces[i++ % faces.length]; }, 55);
 
     try {
       await addCoins(-cost);
@@ -1341,7 +1362,7 @@ function showGacha() {
         }
         stage.appendChild(wrap);
         refresh();
-      }, 900);
+      }, 320);
     } catch (e) {
       clearInterval(anim);
       stage.innerHTML = "";
@@ -1426,6 +1447,16 @@ function showTitles() {
     });
   };
   draw();
+
+  const allb = el("button", "cancel", "👥 みんなの称号を見る");
+  allb.style.marginBottom = "8px";
+  allb.onclick = () => { veil.remove(); if (current) showAllTitles(current); else fail("グループを開いてね。"); };
+  sheet.appendChild(allb);
+
+  const trb = el("button", "cancel", "🔁 トレードを見る");
+  trb.style.marginBottom = "8px";
+  trb.onclick = () => { veil.remove(); if (current) showTrades(current); else fail("グループを開いてね。"); };
+  sheet.appendChild(trb);
 
   const g = el("button", "cancel", "🎰 ガチャにもどる");
   g.style.marginBottom = "8px";
@@ -1547,6 +1578,14 @@ function showAdminPanel(roomId) {
     try { await fb.remove(fb.ref(db, "albums/" + roomId)); toastCoin("アルバムを空にしたよ"); }
     catch (e) { fail("消せませんでした。"); }
   }, true);
+  btn("チャットのメッセージをぜんぶ消す", async () => {
+    if (!confirm("このグループのメッセージをぜんぶ消す？もどせないよ。")) return;
+    try {
+      await fb.remove(fb.ref(db, "rooms/" + roomId + "/messages"));
+      await fb.remove(fb.ref(db, "rooms/" + roomId + "/reactions"));
+      toastCoin("チャットを空にしたよ");
+    } catch (e) { fail("消せませんでした。"); }
+  }, true);
   btn("投票をぜんぶ消す", async () => {
     if (!confirm("このグループの投票をぜんぶ消す？もどせないよ。")) return;
     try { await fb.remove(fb.ref(db, "polls/" + roomId)); toastCoin("投票を空にしたよ"); }
@@ -1562,9 +1601,19 @@ function showAdminPanel(roomId) {
   memNote.style.cssText = "font-size:11px;color:var(--muted);margin:0 0 8px;line-height:1.6";
   sheet.insertBefore(memNote, mlist);
 
-  fb.get(fb.ref(db, "rooms/" + roomId + "/members")).then(async (snap) => {
-    const mem = snap.val() || {};
+  (async () => {
+    let mem = members && Object.keys(members).length ? members : null;
+    if (!mem) {
+      try { const sn = await fb.get(fb.ref(db, "rooms/" + roomId + "/members")); mem = sn.val() || {}; }
+      catch (e) { mem = {}; }
+    }
     mlist.innerHTML = "";
+    if (!Object.keys(mem).length) {
+      const e0 = el("p", null, "メンバーがよみこめなかった。チャット画面をひらいてから、もう一度あけてね。");
+      e0.style.cssText = "font-size:12px;color:var(--muted);padding:14px 0;margin:0";
+      mlist.appendChild(e0);
+      return;
+    }
     for (const u of Object.keys(mem)) {
       const mm = mem[u] || {};
       let coins = 0;
@@ -1604,7 +1653,7 @@ function showAdminPanel(roomId) {
 
       mlist.appendChild(row);
     }
-  }).catch(() => {});
+  })();
 
   const close = el("button", "cancel", "閉じる");
   close.onclick = () => veil.remove();
@@ -1660,6 +1709,290 @@ function showReaders(m) {
   sheet.appendChild(close);
   veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
   veil.appendChild(sheet); app.appendChild(veil);
+}
+
+
+/* ===== メッセージの長押しメニュー ===== */
+function msgMenu(m, mine) {
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "このメッセージ"));
+
+  const prev = m.type === "photo" ? "📷 写真"
+    : m.type === "voice" ? "🎤 声のメッセージ"
+    : m.type === "mysticker" ? "✏️ スタンプ"
+    : m.type === "album" ? "🖼️ アルバム「" + m.body + "」"
+    : (m.body || "").slice(0, 40);
+  const p0 = el("p", null, (mine ? "自分" : m.name) + "：" + prev);
+  sheet.appendChild(p0);
+
+  if (!mine && isAdmin) {
+    const w = el("button", "cancel", "⚠️ 警告を出す");
+    w.style.marginBottom = "8px";
+    w.onclick = () => { veil.remove(); askWarn(m); };
+    sheet.appendChild(w);
+  }
+
+  const del = el("button", "del", "🗑️ このメッセージを消す");
+  del.onclick = async () => {
+    if (!confirm("このメッセージを消す？もどせないよ。")) return;
+    del.disabled = true; del.textContent = "消してるよ…";
+    try {
+      await fb.remove(fb.ref(db, `rooms/${current}/messages/${m.id}`));
+      try { await fb.remove(fb.ref(db, `rooms/${current}/reactions/${m.id}`)); } catch (e) {}
+      veil.remove();
+    } catch (e) { del.disabled = false; del.textContent = "🗑️ このメッセージを消す"; fail("消せませんでした。"); }
+  };
+  sheet.appendChild(del);
+
+  const close = el("button", "cancel", "やめる");
+  close.onclick = () => veil.remove();
+  sheet.appendChild(close);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
+
+/* ===== みんなの称号 ＆ トレード ===== */
+async function loadTitles(uid) {
+  try {
+    const sn = await fb.get(fb.ref(db, "players/" + uid));
+    const v = sn.val() || {};
+    return { titles: v.titles || {}, title: v.title || null, coins: v.coins || 0 };
+  } catch (e) { return { titles: {}, title: null, coins: 0 }; }
+}
+
+function showAllTitles(roomId) {
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "👥 みんなの称号"));
+
+  const body = el("div", null);
+  body.style.cssText = "max-height:56vh;overflow-y:auto;margin-bottom:12px";
+  body.appendChild(el("p", null, "よみこみ中…"));
+  sheet.appendChild(body);
+
+  fb.get(fb.ref(db, "rooms/" + roomId + "/members")).then(async (snap) => {
+    const mem = snap.val() || {};
+    body.innerHTML = "";
+    for (const u of Object.keys(mem)) {
+      const mm = mem[u] || {};
+      const pd = await loadTitles(u);
+      const ids = Object.keys(pd.titles);
+
+      const card = el("div", null);
+      card.style.cssText = "padding:11px 12px;border-radius:14px;background:#f2f3ef;margin-bottom:8px";
+
+      const top = el("p", null, (mm.avatar || "") + (mm.name || "？") + (mm.admin ? " 👑" : "") + "　" + ids.length + "こ");
+      top.style.cssText = "margin:0 0 6px;font-size:14px;font-weight:600;color:var(--ink)";
+      card.appendChild(top);
+
+      const chips = el("div", null);
+      chips.style.cssText = "display:flex;flex-wrap:wrap;gap:4px";
+      if (!ids.length) {
+        const n0 = el("span", null, "まだ持ってないよ");
+        n0.style.cssText = "font-size:12px;color:var(--muted)";
+        chips.appendChild(n0);
+      } else {
+        const order = { UR: 0, SR: 1, R: 2, N: 3 };
+        ids.map(titleById).filter(Boolean).sort((a, b) => order[a.r] - order[b.r]).forEach((t) => {
+          const c = titleChip(t);
+          if (pd.title === t.id) c.style.outline = "2px solid var(--teal)";
+          chips.appendChild(c);
+        });
+      }
+      card.appendChild(chips);
+
+      if (u !== me.uid && ids.length) {
+        const tb = el("button", null, "🔁 この人とトレード");
+        tb.style.cssText = "width:100%;margin-top:8px;padding:9px;border-radius:12px;background:#fff;color:var(--teal);font-size:13px;font-weight:600";
+        tb.onclick = () => { veil.remove(); startTrade(roomId, u, mm.name || "この人"); };
+        card.appendChild(tb);
+      }
+      body.appendChild(card);
+    }
+    if (!Object.keys(mem).length) body.appendChild(el("p", null, "メンバーがいないみたい。"));
+  }).catch(() => { body.innerHTML = ""; body.appendChild(el("p", null, "よみこめませんでした。")); });
+
+  const close = el("button", "cancel", "閉じる");
+  close.onclick = () => veil.remove();
+  sheet.appendChild(close);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
+/* --- トレードをおねがいする --- */
+async function startTrade(roomId, uid, name) {
+  busy(true, "称号を見てるよ…");
+  const pd = await loadTitles(uid);
+  busy(false);
+
+  const mineIds = Object.keys(myPlay.titles || {});
+  const theirIds = Object.keys(pd.titles || {});
+  if (!mineIds.length) { fail("じぶんの称号がないとトレードできないよ。"); return; }
+  if (!theirIds.length) { fail(name + " はまだ称号を持ってないよ。"); return; }
+
+  let give = null, want = null;
+
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "🔁 " + name + " とトレード"));
+
+  const mk = (label, ids, pick, getSel) => {
+    const h = el("p", null, label);
+    h.style.cssText = "font-size:12px;color:var(--muted);margin:12px 0 6px;font-weight:600";
+    sheet.appendChild(h);
+    const box = el("div", null);
+    box.style.cssText = "display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px";
+    const order = { UR: 0, SR: 1, R: 2, N: 3 };
+    ids.map(titleById).filter(Boolean).sort((a, b) => order[a.r] - order[b.r]).forEach((t) => {
+      const b = el("button", null, "");
+      b.style.cssText = "padding:0;background:none;border:none";
+      const c = titleChip(t);
+      b.appendChild(c);
+      b.onclick = () => {
+        pick(t.id);
+        Array.from(box.children).forEach((x) => { x.firstChild.style.outline = "none"; });
+        c.style.outline = "2px solid var(--teal)";
+        check();
+      };
+      box.appendChild(b);
+    });
+    sheet.appendChild(box);
+  };
+
+  mk("じぶんが あげる 称号", mineIds, (id) => { give = id; });
+  mk(name + " から もらう 称号", theirIds, (id) => { want = id; });
+
+  const ok = el("button", "primary", "この交換をおねがいする");
+  ok.style.cssText = "margin:14px 0 8px";
+  ok.disabled = true;
+  sheet.appendChild(ok);
+
+  const check = () => { ok.disabled = !(give && want); };
+
+  ok.onclick = async () => {
+    ok.disabled = true; ok.textContent = "おくってるよ…";
+    try {
+      await fb.push(fb.ref(db, "trades/" + roomId), {
+        fromUid: me.uid, fromName: me.name, toUid: uid, toName: name,
+        giveId: give, wantId: want, t: Date.now()
+      });
+      veil.remove();
+      toastCoin(name + " にトレードをおねがいしたよ");
+    } catch (e) { ok.disabled = false; ok.textContent = "この交換をおねがいする"; fail("おくれませんでした。"); }
+  };
+
+  const close = el("button", "cancel", "やめる");
+  close.onclick = () => veil.remove();
+  sheet.appendChild(close);
+  veil.onclick = (e) => { if (e.target === veil) veil.remove(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
+/* --- トレード一覧 --- */
+let offTrades = null;
+
+function showTrades(roomId) {
+  const veil = el("div", "veil");
+  const sheet = el("div", "sheet");
+  sheet.appendChild(el("h2", null, "🔁 トレード"));
+
+  const body = el("div", null);
+  body.style.cssText = "max-height:56vh;overflow-y:auto;margin-bottom:12px";
+  sheet.appendChild(body);
+
+  const closeIt = () => {
+    if (offTrades) { try { offTrades(); } catch (e) {} offTrades = null; }
+    veil.remove();
+  };
+
+  if (offTrades) { try { offTrades(); } catch (e) {} offTrades = null; }
+  offTrades = fb.onValue(fb.ref(db, "trades/" + roomId), (snap) => {
+    body.innerHTML = "";
+    const items = [];
+    snap.forEach((c) => { const v = c.val(); if (v) items.push({ key: c.key, v }); });
+    const mineT = items.filter((x) => x.v.toUid === me.uid || x.v.fromUid === me.uid);
+    if (!mineT.length) {
+      const e0 = el("p", null, "いまトレードはないよ。「👥 みんなの称号」から おねがいできる。");
+      e0.style.cssText = "font-size:13px;color:var(--muted);text-align:center;padding:20px 0;margin:0";
+      body.appendChild(e0);
+      return;
+    }
+    mineT.sort((a, b) => (b.v.t || 0) - (a.v.t || 0)).forEach(({ key, v }) => {
+      const toMe = v.toUid === me.uid;
+      const gt = titleById(v.giveId), wt = titleById(v.wantId);
+      if (!gt || !wt) return;
+
+      const card = el("div", null);
+      card.style.cssText = "padding:12px;border-radius:14px;background:#f2f3ef;margin-bottom:8px";
+      const who = el("p", null, toMe ? ("📩 " + v.fromName + " から") : ("📤 " + v.toName + " へ おねがい中"));
+      who.style.cssText = "margin:0 0 8px;font-size:13px;font-weight:600;color:var(--ink)";
+      card.appendChild(who);
+
+      const rowT = el("div", null);
+      rowT.style.cssText = "display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px";
+      rowT.appendChild(titleChip(toMe ? wt : gt));
+      const ar = el("span", null, "→");
+      ar.style.cssText = "font-size:13px;color:var(--muted)";
+      rowT.appendChild(ar);
+      rowT.appendChild(titleChip(toMe ? gt : wt));
+      const exp = el("p", null, toMe ? ("あなたの「" + wt.name + "」と、" + v.fromName + "の「" + gt.name + "」をこうかん") : ("あなたの「" + gt.name + "」と、" + v.toName + "の「" + wt.name + "」をこうかん"));
+      exp.style.cssText = "margin:0 0 10px;font-size:11px;color:var(--muted);line-height:1.6;width:100%";
+      card.appendChild(rowT); card.appendChild(exp);
+
+      if (toMe) {
+        const yes = el("button", "primary", "✅ こうかんする");
+        yes.style.cssText = "margin-bottom:6px;padding:11px";
+        yes.onclick = () => acceptTrade(roomId, key, v, yes);
+        card.appendChild(yes);
+        const no = el("button", "cancel", "ことわる");
+        no.style.padding = "11px";
+        no.onclick = async () => { try { await fb.remove(fb.ref(db, "trades/" + roomId + "/" + key)); } catch (e) {} };
+        card.appendChild(no);
+      } else {
+        const cx = el("button", "cancel", "とりけす");
+        cx.style.padding = "11px";
+        cx.onclick = async () => { try { await fb.remove(fb.ref(db, "trades/" + roomId + "/" + key)); } catch (e) {} };
+        card.appendChild(cx);
+      }
+      body.appendChild(card);
+    });
+  });
+
+  const close = el("button", "cancel", "閉じる");
+  close.onclick = closeIt;
+  sheet.appendChild(close);
+  veil.onclick = (e) => { if (e.target === veil) closeIt(); };
+  veil.appendChild(sheet); app.appendChild(veil);
+}
+
+async function acceptTrade(roomId, key, v, btnEl) {
+  btnEl.disabled = true; btnEl.textContent = "こうかん中…";
+  try {
+    const a = await fb.get(fb.ref(db, "players/" + v.fromUid + "/titles/" + v.giveId));
+    const b = await fb.get(fb.ref(db, "players/" + v.toUid + "/titles/" + v.wantId));
+    if (!a.val() || !b.val()) {
+      await fb.remove(fb.ref(db, "trades/" + roomId + "/" + key));
+      fail("どちらかが その称号を持ってないみたい。");
+      return;
+    }
+    await fb.remove(fb.ref(db, "players/" + v.fromUid + "/titles/" + v.giveId));
+    await fb.set(fb.ref(db, "players/" + v.toUid + "/titles/" + v.giveId), true);
+    await fb.remove(fb.ref(db, "players/" + v.toUid + "/titles/" + v.wantId));
+    await fb.set(fb.ref(db, "players/" + v.fromUid + "/titles/" + v.wantId), true);
+
+    const f = await fb.get(fb.ref(db, "players/" + v.fromUid + "/title"));
+    if (f.val() === v.giveId) await fb.set(fb.ref(db, "players/" + v.fromUid + "/title"), null);
+    const t2 = await fb.get(fb.ref(db, "players/" + v.toUid + "/title"));
+    if (t2.val() === v.wantId) await fb.set(fb.ref(db, "players/" + v.toUid + "/title"), null);
+
+    await fb.remove(fb.ref(db, "trades/" + roomId + "/" + key));
+    toastCoin("こうかんできた！🎉");
+  } catch (e) {
+    btnEl.disabled = false; btnEl.textContent = "✅ こうかんする";
+    fail("こうかんできませんでした。");
+  }
 }
 
 function showHome() {
@@ -2771,8 +3104,8 @@ function render() {
     }
     bub.setAttribute("aria-label", m.type === "voice" ? "声を再生する" : (m.type === "photo" ? "写真" : "リアクションをつける"));
 
-    if (!mine && isAdmin) {
-      const wasLong = longPress(bub, 700, () => askWarn(m));
+    {
+      const wasLong = longPress(bub, 700, () => msgMenu(m, mine));
       const orig = bub.onclick;
       bub.onclick = (ev) => { if (wasLong()) return; if (orig) orig(ev); };
     }
