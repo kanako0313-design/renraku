@@ -300,17 +300,14 @@ if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL) {
   throw new Error("no config");
 }
 
-let db, fb, st, stor;
+let db, fb;
 try {
-  const [{ initializeApp }, dbmod, stmod] = await Promise.all([
+  const [{ initializeApp }, dbmod] = await Promise.all([
     import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"),
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js")
+    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js")
   ]);
-  fb = dbmod; st = stmod;
-  const fapp = initializeApp(firebaseConfig);
-  db = fb.getDatabase(fapp);
-  try { stor = st.getStorage(fapp); } catch (e2) { stor = null; }
+  fb = dbmod;
+  db = fb.getDatabase(initializeApp(firebaseConfig));
 } catch (e) {
   app.innerHTML = '<div class="center"><div class="card"><p class="eyebrow">ここでは動きません</p><h1>ネットに置いてから開いてね</h1><p class="note">このアプリは、ウェブに公開した状態でないと動きません。</p></div></div>';
   throw e;
@@ -838,8 +835,8 @@ function newAlbum(roomId) {
           try {
             let item;
             if (isVid) {
-              const v = await uploadVideo(f, "albums/" + roomId + "/" + id);
-              item = { vid: v.url, vpath: v.path, by: me.name, t: Date.now() };
+              const v = await makeVideoData(f);
+              item = { vid: v.vid, w: v.w, h: v.h, by: me.name, t: Date.now() };
             } else {
               const r = await shrinkOne(f);
               item = { img: r.small.data, w: r.small.w, h: r.small.h, by: me.name, t: Date.now() };
@@ -890,8 +887,8 @@ function openAlbumById(roomId, id) {
         try {
           let item;
           if (isVid) {
-            const v = await uploadVideo(f, "albums/" + roomId + "/" + id);
-            item = { vid: v.url, vpath: v.path, by: me.name, t: Date.now() };
+            const v = await makeVideoData(f);
+            item = { vid: v.vid, w: v.w, h: v.h, by: me.name, t: Date.now() };
           } else {
             const r = await shrinkOne(f);
             item = { img: r.small.data, w: r.small.w, h: r.small.h, by: me.name, t: Date.now() };
@@ -1005,7 +1002,6 @@ function openAlbumPhoto(roomId, id, key, pv, alb) {
     del.onclick = async () => {
       try {
         await fb.remove(fb.ref(db, "albums/" + roomId + "/" + id + "/photos/" + key));
-        if (pv.vpath && stor) { try { await st.deleteObject(st.ref(stor, pv.vpath)); } catch (e2) {} }
         modal.remove();
       } catch (e) { fail("消せませんでした。"); }
     };
@@ -1031,7 +1027,7 @@ function showMore(roomId) {
     sheet.appendChild(b);
   };
   item("🖼️  アルバム", () => showAlbum(roomId));
-  item("🎬  動画を送る", () => pickVideo());
+  item("🎬  動画を送る（10秒・音なし）", () => pickVideo());
   item("🗳️  投票・アンケート", () => showPolls(roomId));
   item("🎰  称号ガチャ（🪙" + myPlay.coins + "）", () => showGacha());
   item("👑  もってる称号", () => showTitles());
@@ -2034,29 +2030,88 @@ async function acceptTrade(roomId, key, v, btnEl) {
 }
 
 
-/* ===== 動画 ===== */
-const VIDEO_MAX = 60 * 1024 * 1024;
+/* ===== 動画（音なし・短いのだけ） ===== */
+const VID_MAX_SEC = 10;
+const VID_W = 360;
+const VID_MAX_BYTES = 900000;
 
-async function uploadVideo(file, prefix) {
-  if (!stor) throw new Error("Storageが使えません");
-  if (file.size > VIDEO_MAX) throw new Error("big");
-  const name = Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-  const ext = (file.name && file.name.indexOf(".") > -1) ? file.name.slice(file.name.lastIndexOf(".")) : ".mp4";
-  const key = prefix + "/" + name + ext;
-  const r = st.ref(stor, key);
-  await st.uploadBytes(r, file, { contentType: file.type || "video/mp4" });
-  const url = await st.getDownloadURL(r);
-  return { url, path: key };
+function shrinkVideo(file, onProgress) {
+  return new Promise((resolve, reject) => {
+    if (!window.MediaRecorder) { reject(new Error("この端末では動画を送れません")); return; }
+    let mime = "";
+    ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp8", "video/webm"].forEach((m) => {
+      if (!mime) { try { if (MediaRecorder.isTypeSupported(m)) mime = m; } catch (e) {} }
+    });
+    if (!mime) { reject(new Error("この端末では動画をちぢめられません")); return; }
+
+    const v = document.createElement("video");
+    v.playsInline = true; v.muted = true; v.setAttribute("playsinline", "");
+    const url = URL.createObjectURL(file);
+    v.src = url;
+
+    const done = (fn) => { try { URL.revokeObjectURL(url); } catch (e) {} fn(); };
+    v.onerror = () => done(() => reject(new Error("この動画は読めませんでした")));
+
+    v.onloadedmetadata = () => {
+      const dur = Math.min(v.duration || VID_MAX_SEC, VID_MAX_SEC);
+      const sw = v.videoWidth || VID_W, sh = v.videoHeight || VID_W;
+      const sc = Math.min(1, VID_W / sw);
+      const w = Math.max(2, Math.round(sw * sc / 2) * 2);
+      const h = Math.max(2, Math.round(sh * sc / 2) * 2);
+
+      const cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      const cx = cv.getContext("2d");
+      let stream;
+      try { stream = cv.captureStream(15); }
+      catch (e) { done(() => reject(new Error("この端末では動画をちぢめられません"))); return; }
+
+      let rec;
+      try { rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 420000 }); }
+      catch (e) { done(() => reject(new Error("この端末では動画をちぢめられません"))); return; }
+
+      const chunks = [];
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop = () => done(() => resolve({ blob: new Blob(chunks, { type: mime }), w, h }));
+
+      let stopped = false;
+      const finish = () => { if (stopped) return; stopped = true; try { v.pause(); } catch (e) {} try { rec.stop(); } catch (e) {} };
+
+      const draw = () => {
+        if (stopped) return;
+        if (v.ended || v.currentTime >= dur) { finish(); return; }
+        try { cx.drawImage(v, 0, 0, w, h); } catch (e) {}
+        if (onProgress) onProgress(Math.min(1, v.currentTime / dur));
+        requestAnimationFrame(draw);
+      };
+
+      v.onended = finish;
+      v.onplay = () => { try { rec.start(); } catch (e) {} draw(); };
+      v.play().catch(() => done(() => reject(new Error("さいせいできませんでした"))));
+      setTimeout(finish, (VID_MAX_SEC + 4) * 1000);
+    };
+  });
+}
+
+function blobToData(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+}
+
+async function makeVideoData(file) {
+  const r = await shrinkVideo(file, (p) => busy(true, "動画をちぢめてるよ… " + Math.round(p * 100) + "%"));
+  const data = await blobToData(r.blob);
+  if (!data || data.length > VID_MAX_BYTES) throw new Error("long");
+  return { vid: data, w: r.w, h: r.h };
 }
 
 function videoError(e) {
-  if (e && e.message === "big") { fail("動画が大きすぎるよ（60MBまで）。みじかく切ってね。"); return; }
-  const c = e && e.code ? String(e.code) : "";
-  if (c.indexOf("unauthorized") > -1 || c.indexOf("permission") > -1) {
-    fail("動画の置き場所（Storage）がまだ開いてないみたい。Firebaseコンソールで Storage をはじめてね。");
-  } else {
-    fail("動画をおくれませんでした。" + (e && e.message ? "（" + e.message + "）" : ""));
-  }
+  if (e && e.message === "long") { fail("動画が長すぎ or 重すぎ。10秒くらいに切ってね。"); return; }
+  fail(e && e.message ? e.message : "動画をおくれませんでした。");
 }
 
 function pickVideo() {
@@ -2065,11 +2120,11 @@ function pickVideo() {
   inp.onchange = async () => {
     const f = inp.files && inp.files[0];
     if (!f) return;
-    busy(true, "動画をおくってるよ…");
+    busy(true, "動画をちぢめてるよ…");
     try {
-      const v = await uploadVideo(f, "videos/" + current);
+      const v = await makeVideoData(f);
       busy(false);
-      await send("video", v.url, { vpath: v.path });
+      await send("video", v.vid, { vw: v.w, vh: v.h });
     } catch (e) { busy(false); videoError(e); }
   };
   inp.click();
